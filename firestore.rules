@@ -1,0 +1,757 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ====================
+    // GLOBAL PRIMITIVES
+    // ====================
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function authEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isBootstrappedSuperAdmin() {
+      return isSignedIn() && authEmail() == 'usitakatelvin@gmail.com';
+    }
+
+    function staffDocExists() {
+      return exists(/databases/$(database)/documents/staff/$(request.auth.uid));
+    }
+
+    function staffData() {
+      return get(/databases/$(database)/documents/staff/$(request.auth.uid)).data;
+    }
+
+    function isActiveStaff() {
+      return isBootstrappedSuperAdmin() || (
+        isSignedIn() &&
+        staffDocExists() &&
+        staffData().employmentStatus == 'active'
+      );
+    }
+
+    function isSuperAdmin() {
+      return isBootstrappedSuperAdmin() || (
+        isActiveStaff() && staffData().role == 'super_admin'
+      );
+    }
+
+    function isAdmin() {
+      return isSuperAdmin() || (
+        isActiveStaff() && staffData().role == 'admin'
+      );
+    }
+
+    function isFinance() {
+      return isAdmin() || (
+        isActiveStaff() && staffData().role == 'finance'
+      );
+    }
+
+    function isSales() {
+      return isActiveStaff() && staffData().role == 'sales';
+    }
+
+    function isSupport() {
+      return isActiveStaff() && staffData().role == 'support';
+    }
+
+    function isDeveloper() {
+      return isActiveStaff() && staffData().role == 'developer';
+    }
+
+    function isNonDevStaff() {
+      return isAdmin() || isFinance() || isSales() || isSupport();
+    }
+
+    // ====================
+    // VALIDATION BLUEPRINTS
+    // ====================
+    function isValidCompanySettings(data) {
+      return data.keys().hasAll([
+          'companyName', 'tagline', 'companyEmail', 'companyPhone', 'companyAddress',
+          'bankAccountName', 'bankName', 'bankAccountNumber', 'minimumPaymentAmount',
+          'commissionMode', 'defaultCommissionRate', 'defaultFixedCommission',
+          'departments', 'services', 'updatedByUid', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'companyName', 'tagline', 'companyEmail', 'companyPhone', 'companyAddress',
+          'bankAccountName', 'bankName', 'bankAccountNumber', 'minimumPaymentAmount',
+          'commissionMode', 'defaultCommissionRate', 'defaultFixedCommission',
+          'departments', 'services', 'updatedByUid', 'updatedAt'
+        ]) &&
+        data.companyName is string && data.companyName.size() >= 2 && data.companyName.size() <= 120 &&
+        data.tagline is string && data.tagline.size() <= 160 &&
+        data.companyEmail is string && data.companyEmail.size() <= 160 &&
+        data.companyPhone is string && data.companyPhone.size() <= 40 &&
+        data.companyAddress is string && data.companyAddress.size() <= 300 &&
+        data.bankAccountName is string && data.bankAccountName.size() >= 2 && data.bankAccountName.size() <= 120 &&
+        data.bankName is string && data.bankName.size() >= 2 && data.bankName.size() <= 120 &&
+        data.bankAccountNumber is string && data.bankAccountNumber.matches('^[0-9]{10}$') &&
+        data.minimumPaymentAmount is number && data.minimumPaymentAmount >= 0 &&
+        data.commissionMode in ['percentage', 'fixed'] &&
+        data.defaultCommissionRate is number && data.defaultCommissionRate >= 0 && data.defaultCommissionRate <= 100 &&
+        data.defaultFixedCommission is number && data.defaultFixedCommission >= 0 &&
+        data.departments is list && data.departments.size() >= 1 && data.departments.size() <= 40 && data.departments[0] is string &&
+        data.services is list && data.services.size() >= 1 && data.services.size() <= 60 && data.services[0] is string &&
+        data.updatedByUid is string && data.updatedByUid.size() <= 128 &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidStaffMember(data) {
+      return data.keys().hasAll([
+          'uid', 'staffCode', 'fullName', 'email', 'department', 'position',
+          'role', 'employmentStatus', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid', 'staffCode', 'fullName', 'email', 'phone', 'department', 'position',
+          'role', 'employmentStatus', 'bankName', 'bankAccountNumber', 'bankAccountName',
+          'commissionRateOverride', 'inviteId', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.uid) &&
+        data.staffCode is string && data.staffCode.size() >= 5 && data.staffCode.size() <= 32 &&
+        data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 120 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        (!('phone' in data) || (data.phone is string && data.phone.size() <= 40)) &&
+        data.department is string && data.department.size() >= 2 && data.department.size() <= 80 &&
+        data.position is string && data.position.size() >= 2 && data.position.size() <= 80 &&
+        data.role in ['super_admin', 'admin', 'sales', 'developer', 'finance', 'support'] &&
+        data.employmentStatus in ['pending', 'active', 'suspended', 'revoked'] &&
+        (!('bankName' in data) || (data.bankName is string && data.bankName.size() <= 80)) &&
+        (!('bankAccountNumber' in data) || (data.bankAccountNumber is string && data.bankAccountNumber.size() <= 20)) &&
+        (!('bankAccountName' in data) || (data.bankAccountName is string && data.bankAccountName.size() <= 120)) &&
+        (!('commissionRateOverride' in data) || (data.commissionRateOverride is number && data.commissionRateOverride >= 0 && data.commissionRateOverride <= 100)) &&
+        (!('inviteId' in data) || isValidId(data.inviteId)) &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidStaffPublic(data) {
+      return data.keys().hasAll([
+          'uid', 'staffCode', 'fullName', 'department', 'position', 'role', 'employmentStatus', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid', 'staffCode', 'fullName', 'department', 'position', 'role', 'employmentStatus', 'updatedAt'
+        ]) &&
+        isValidId(data.uid) &&
+        data.staffCode is string && data.staffCode.size() <= 32 &&
+        data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 120 &&
+        data.department is string && data.department.size() <= 80 &&
+        data.position is string && data.position.size() <= 80 &&
+        data.role in ['super_admin', 'admin', 'sales', 'developer', 'finance', 'support'] &&
+        data.employmentStatus in ['pending', 'active', 'suspended', 'revoked'] &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidStaffInvite(data) {
+      return data.keys().hasAll([
+          'id', 'staffCode', 'fullName', 'email', 'department', 'position',
+          'role', 'status', 'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'staffCode', 'fullName', 'email', 'phone', 'department', 'position',
+          'role', 'bankName', 'bankAccountNumber', 'bankAccountName',
+          'status', 'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.staffCode is string && data.staffCode.size() <= 32 &&
+        data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 120 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        (!('phone' in data) || (data.phone is string && data.phone.size() <= 40)) &&
+        data.department is string && data.department.size() <= 80 &&
+        data.position is string && data.position.size() <= 80 &&
+        data.role in ['admin', 'sales', 'developer', 'finance', 'support'] &&
+        (!('bankName' in data) || (data.bankName is string && data.bankName.size() <= 80)) &&
+        (!('bankAccountNumber' in data) || (data.bankAccountNumber is string && data.bankAccountNumber.size() <= 20)) &&
+        (!('bankAccountName' in data) || (data.bankAccountName is string && data.bankAccountName.size() <= 120)) &&
+        data.status in ['invited', 'claimed', 'revoked'] &&
+        data.createdByUid is string && data.createdByUid.size() <= 128 &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidCustomer(data) {
+      return data.keys().hasAll([
+          'id', 'customerCode', 'accountNumber', 'fullName', 'businessName', 'phone',
+          'email', 'businessAddress', 'registrationDate', 'salesRepUid', 'salesRepName',
+          'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'customerCode', 'accountNumber', 'fullName', 'businessName', 'phone',
+          'email', 'businessAddress', 'businessCategory', 'registrationDate',
+          'salesRepUid', 'salesRepName', 'notes', 'customerUid',
+          'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.customerCode is string && data.customerCode.matches('^VSB-CUS-[0-9]{4,8}$') &&
+        data.accountNumber is string && data.accountNumber.matches('^[0-9]{10}$') &&
+        data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 120 &&
+        data.businessName is string && data.businessName.size() >= 1 && data.businessName.size() <= 160 &&
+        data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 40 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.businessAddress is string && data.businessAddress.size() <= 300 &&
+        (!('businessCategory' in data) || (data.businessCategory is string && data.businessCategory.size() <= 100)) &&
+        data.registrationDate is string && data.registrationDate.size() <= 40 &&
+        data.salesRepUid is string && data.salesRepUid.size() <= 128 &&
+        data.salesRepName is string && data.salesRepName.size() <= 120 &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 2000)) &&
+        (!('customerUid' in data) || (data.customerUid is string && data.customerUid.size() <= 128)) &&
+        data.createdByUid is string && data.createdByUid.size() <= 128 &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll([
+          'id', 'projectCode', 'title', 'serviceType', 'customerId', 'customerCode',
+          'customerName', 'customerBusinessName', 'salesRepUid', 'salesRepName',
+          'status', 'progressPercent', 'startDate', 'deadline', 'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'projectCode', 'title', 'serviceType', 'customerId', 'customerCode',
+          'customerName', 'customerBusinessName', 'salesRepUid', 'salesRepName',
+          'developerUid', 'developerName', 'status', 'progressPercent', 'startDate',
+          'deadline', 'description', 'developerNotes', 'readyForReviewAt',
+          'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.projectCode is string && data.projectCode.matches('^VSB-PRJ-[0-9]{4,8}$') &&
+        data.title is string && data.title.size() >= 2 && data.title.size() <= 160 &&
+        data.serviceType is string && data.serviceType.size() >= 2 && data.serviceType.size() <= 120 &&
+        isValidId(data.customerId) &&
+        data.customerCode is string && data.customerCode.size() <= 32 &&
+        data.customerName is string && data.customerName.size() <= 120 &&
+        data.customerBusinessName is string && data.customerBusinessName.size() <= 160 &&
+        data.salesRepUid is string && data.salesRepUid.size() <= 128 &&
+        data.salesRepName is string && data.salesRepName.size() <= 120 &&
+        (!('developerUid' in data) || (data.developerUid is string && data.developerUid.size() <= 128)) &&
+        (!('developerName' in data) || (data.developerName is string && data.developerName.size() <= 120)) &&
+        data.status in ['Pending', 'Awaiting Information', 'In Progress', 'Under Review', 'Completed', 'Cancelled'] &&
+        data.progressPercent is number && data.progressPercent >= 0 && data.progressPercent <= 100 &&
+        data.startDate is string && data.startDate.size() <= 40 &&
+        data.deadline is string && data.deadline.size() <= 40 &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 4000)) &&
+        (!('developerNotes' in data) || (data.developerNotes is string && data.developerNotes.size() <= 4000)) &&
+        (!('readyForReviewAt' in data) || (data.readyForReviewAt is string && data.readyForReviewAt.size() <= 64)) &&
+        data.createdByUid is string && data.createdByUid.size() <= 128 &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidDeliverable(data) {
+      return data.keys().hasAll([
+          'id', 'projectId', 'title', 'fileUrl', 'uploadedByUid', 'uploadedByName', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'projectId', 'title', 'fileName', 'fileUrl', 'notes',
+          'uploadedByUid', 'uploadedByName', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.projectId) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+        (!('fileName' in data) || (data.fileName is string && data.fileName.size() <= 200)) &&
+        data.fileUrl is string && data.fileUrl.size() >= 5 && data.fileUrl.size() <= 1000 &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000)) &&
+        data.uploadedByUid is string && data.uploadedByUid.size() <= 128 &&
+        data.uploadedByName is string && data.uploadedByName.size() <= 120 &&
+        data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidProjectFinancial(data) {
+      return data.keys().hasAll([
+          'projectId', 'customerId', 'salesRepUid', 'agreedPrice',
+          'totalPaid', 'outstandingBalance', 'paymentStatus', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'projectId', 'customerId', 'customerEmail', 'salesRepUid', 'agreedPrice',
+          'totalPaid', 'outstandingBalance', 'paymentStatus', 'updatedAt'
+        ]) &&
+        isValidId(data.projectId) &&
+        isValidId(data.customerId) &&
+        (!('customerEmail' in data) || (data.customerEmail is string && data.customerEmail.size() <= 160)) &&
+        data.salesRepUid is string && data.salesRepUid.size() <= 128 &&
+        data.agreedPrice is number && data.agreedPrice >= 0 &&
+        data.totalPaid is number && data.totalPaid >= 0 &&
+        data.outstandingBalance is number && data.outstandingBalance >= 0 &&
+        data.paymentStatus in ['Unpaid', 'Partially Paid', 'Fully Paid'] &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidOnboardingForm(data) {
+      return data.keys().hasAll([
+          'id', 'formCode', 'customerId', 'customerEmail', 'salesRepUid',
+          'status', 'servicePurchased', 'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'formCode', 'customerId', 'customerCode', 'customerEmail', 'projectId',
+          'salesRepUid', 'developerUid', 'status', 'fullName', 'businessName', 'phone',
+          'email', 'businessAddress', 'businessCategory', 'servicePurchased',
+          'businessDescription', 'requirementsDescription', 'serviceSpecificAnswers',
+          'logoUrl', 'attachmentUrls', 'submittedByUid', 'submittedAt',
+          'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.formCode is string && data.formCode.size() <= 40 &&
+        isValidId(data.customerId) &&
+        (!('customerCode' in data) || (data.customerCode is string && data.customerCode.size() <= 32)) &&
+        data.customerEmail is string && data.customerEmail.size() <= 160 &&
+        (!('projectId' in data) || (data.projectId is string && data.projectId.size() <= 128)) &&
+        data.salesRepUid is string && data.salesRepUid.size() <= 128 &&
+        (!('developerUid' in data) || (data.developerUid is string && data.developerUid.size() <= 128)) &&
+        data.status in ['Pending', 'Submitted', 'Reviewed'] &&
+        (!('fullName' in data) || (data.fullName is string && data.fullName.size() <= 120)) &&
+        (!('businessName' in data) || (data.businessName is string && data.businessName.size() <= 160)) &&
+        (!('phone' in data) || (data.phone is string && data.phone.size() <= 40)) &&
+        (!('email' in data) || (data.email is string && data.email.size() <= 160)) &&
+        (!('businessAddress' in data) || (data.businessAddress is string && data.businessAddress.size() <= 300)) &&
+        (!('businessCategory' in data) || (data.businessCategory is string && data.businessCategory.size() <= 100)) &&
+        data.servicePurchased is string && data.servicePurchased.size() <= 120 &&
+        (!('businessDescription' in data) || (data.businessDescription is string && data.businessDescription.size() <= 4000)) &&
+        (!('requirementsDescription' in data) || (data.requirementsDescription is string && data.requirementsDescription.size() <= 5000)) &&
+        (!('serviceSpecificAnswers' in data) || data.serviceSpecificAnswers is map) &&
+        (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 1000)) &&
+        (!('attachmentUrls' in data) || (data.attachmentUrls is list && data.attachmentUrls.size() <= 15 && (data.attachmentUrls.size() == 0 || data.attachmentUrls[0] is map))) &&
+        (!('submittedByUid' in data) || (data.submittedByUid is string && data.submittedByUid.size() <= 128)) &&
+        (!('submittedAt' in data) || (data.submittedAt is string && data.submittedAt.size() <= 64)) &&
+        data.createdByUid is string && data.createdByUid.size() <= 128 &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidInvoice(data) {
+      return data.keys().hasAll([
+          'id', 'invoiceNumber', 'customerId', 'customerName', 'customerEmail',
+          'salesRepUid', 'issueDate', 'dueDate', 'items', 'totalAmount',
+          'amountPaid', 'outstandingBalance', 'status', 'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'invoiceNumber', 'customerId', 'customerCode', 'customerName',
+          'customerBusinessName', 'customerEmail', 'customerPhone', 'customerAddress',
+          'projectId', 'projectCode', 'salesRepUid', 'issueDate', 'dueDate', 'items',
+          'totalAmount', 'amountPaid', 'outstandingBalance', 'status', 'notes',
+          'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.invoiceNumber is string && data.invoiceNumber.matches('^VSB-INV-[0-9]{4}-[0-9]{4,8}$') &&
+        isValidId(data.customerId) &&
+        (!('customerCode' in data) || (data.customerCode is string && data.customerCode.size() <= 32)) &&
+        data.customerName is string && data.customerName.size() <= 120 &&
+        (!('customerBusinessName' in data) || (data.customerBusinessName is string && data.customerBusinessName.size() <= 160)) &&
+        data.customerEmail is string && data.customerEmail.size() <= 160 &&
+        (!('customerPhone' in data) || (data.customerPhone is string && data.customerPhone.size() <= 40)) &&
+        (!('customerAddress' in data) || (data.customerAddress is string && data.customerAddress.size() <= 300)) &&
+        (!('projectId' in data) || (data.projectId is string && data.projectId.size() <= 128)) &&
+        (!('projectCode' in data) || (data.projectCode is string && data.projectCode.size() <= 32)) &&
+        data.salesRepUid is string && data.salesRepUid.size() <= 128 &&
+        data.issueDate is string && data.issueDate.size() <= 40 &&
+        data.dueDate is string && data.dueDate.size() <= 40 &&
+        data.items is list && data.items.size() >= 1 && data.items.size() <= 20 && data.items[0] is map &&
+        data.totalAmount is number && data.totalAmount >= 0 &&
+        data.amountPaid is number && data.amountPaid >= 0 &&
+        data.outstandingBalance is number && data.outstandingBalance >= 0 &&
+        data.status in ['Unpaid', 'Partially Paid', 'Paid', 'Overdue'] &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 2000)) &&
+        data.createdByUid is string && data.createdByUid.size() <= 128 &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidPayment(data) {
+      return data.keys().hasAll([
+          'id', 'receiptNumber', 'projectId', 'customerId', 'customerName',
+          'salesRepUid', 'amount', 'paymentMethod', 'paymentDate', 'transactionReference',
+          'verificationStatus', 'recordedByUid', 'recordedByName', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'receiptNumber', 'projectId', 'projectCode', 'invoiceId', 'invoiceNumber',
+          'customerId', 'customerName', 'customerEmail', 'salesRepUid', 'amount',
+          'paymentMethod', 'paymentDate', 'transactionReference', 'notes',
+          'verificationStatus', 'recordedByUid', 'recordedByName',
+          'verifiedByUid', 'verifiedByName', 'verifiedAt', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.receiptNumber is string && data.receiptNumber.size() <= 40 &&
+        isValidId(data.projectId) &&
+        (!('projectCode' in data) || (data.projectCode is string && data.projectCode.size() <= 32)) &&
+        (!('invoiceId' in data) || (data.invoiceId is string && data.invoiceId.size() <= 128)) &&
+        (!('invoiceNumber' in data) || (data.invoiceNumber is string && data.invoiceNumber.size() <= 40)) &&
+        isValidId(data.customerId) &&
+        data.customerName is string && data.customerName.size() <= 120 &&
+        (!('customerEmail' in data) || (data.customerEmail is string && data.customerEmail.size() <= 160)) &&
+        data.salesRepUid is string && data.salesRepUid.size() <= 128 &&
+        data.amount is number && data.amount > 0 &&
+        data.paymentMethod is string && data.paymentMethod.size() <= 80 &&
+        data.paymentDate is string && data.paymentDate.size() <= 40 &&
+        data.transactionReference is string && data.transactionReference.size() >= 2 && data.transactionReference.size() <= 120 &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000)) &&
+        data.verificationStatus in ['pending', 'confirmed', 'rejected'] &&
+        data.recordedByUid is string && data.recordedByUid.size() <= 128 &&
+        data.recordedByName is string && data.recordedByName.size() <= 120 &&
+        (!('verifiedByUid' in data) || (data.verifiedByUid is string && data.verifiedByUid.size() <= 128)) &&
+        (!('verifiedByName' in data) || (data.verifiedByName is string && data.verifiedByName.size() <= 120)) &&
+        (!('verifiedAt' in data) || (data.verifiedAt is string && data.verifiedAt.size() <= 64)) &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidCommission(data) {
+      return data.keys().hasAll([
+          'id', 'salesRepUid', 'salesRepName', 'customerId', 'projectId', 'paymentId',
+          'confirmedPaymentAmount', 'commissionType', 'commissionRate', 'commissionAmount',
+          'payoutStatus', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'salesRepUid', 'salesRepName', 'customerId', 'customerName',
+          'projectId', 'projectCode', 'paymentId', 'confirmedPaymentAmount',
+          'commissionType', 'commissionRate', 'commissionAmount',
+          'payoutStatus', 'payoutReference', 'approvedByUid', 'paidAt',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.salesRepUid is string && data.salesRepUid.size() <= 128 &&
+        data.salesRepName is string && data.salesRepName.size() <= 120 &&
+        isValidId(data.customerId) &&
+        (!('customerName' in data) || (data.customerName is string && data.customerName.size() <= 120)) &&
+        isValidId(data.projectId) &&
+        (!('projectCode' in data) || (data.projectCode is string && data.projectCode.size() <= 32)) &&
+        isValidId(data.paymentId) &&
+        data.confirmedPaymentAmount is number && data.confirmedPaymentAmount >= 0 &&
+        data.commissionType in ['percentage', 'fixed'] &&
+        data.commissionRate is number && data.commissionRate >= 0 &&
+        data.commissionAmount is number && data.commissionAmount >= 0 &&
+        data.payoutStatus in ['unpaid', 'approved', 'paid'] &&
+        (!('payoutReference' in data) || (data.payoutReference is string && data.payoutReference.size() <= 120)) &&
+        (!('approvedByUid' in data) || (data.approvedByUid is string && data.approvedByUid.size() <= 128)) &&
+        (!('paidAt' in data) || (data.paidAt is string && data.paidAt.size() <= 64)) &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidExpense(data) {
+      return data.keys().hasAll([
+          'id', 'expenseCode', 'description', 'category', 'amount', 'expenseDate',
+          'paymentMethod', 'responsiblePerson', 'recordedByUid', 'recordedByName',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'expenseCode', 'description', 'category', 'amount', 'expenseDate',
+          'paymentMethod', 'responsiblePerson', 'receiptUrl', 'receiptName',
+          'recordedByUid', 'recordedByName', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.expenseCode is string && data.expenseCode.size() <= 40 &&
+        data.description is string && data.description.size() >= 2 && data.description.size() <= 300 &&
+        data.category is string && data.category.size() <= 80 &&
+        data.amount is number && data.amount > 0 &&
+        data.expenseDate is string && data.expenseDate.size() <= 40 &&
+        data.paymentMethod is string && data.paymentMethod.size() <= 80 &&
+        data.responsiblePerson is string && data.responsiblePerson.size() <= 120 &&
+        (!('receiptUrl' in data) || (data.receiptUrl is string && data.receiptUrl.size() <= 1000)) &&
+        (!('receiptName' in data) || (data.receiptName is string && data.receiptName.size() <= 200)) &&
+        data.recordedByUid is string && data.recordedByUid.size() <= 128 &&
+        data.recordedByName is string && data.recordedByName.size() <= 120 &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll([
+          'id', 'targetRole', 'type', 'title', 'message', 'isRead', 'createdByUid', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'targetRole', 'targetUid', 'type', 'title', 'message',
+          'entityType', 'entityId', 'isRead', 'createdByUid', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.targetRole in ['admins', 'staff', 'user'] &&
+        (!('targetUid' in data) || (data.targetUid is string && data.targetUid.size() <= 128)) &&
+        data.type is string && data.type.size() <= 60 &&
+        data.title is string && data.title.size() <= 160 &&
+        data.message is string && data.message.size() <= 500 &&
+        (!('entityType' in data) || (data.entityType is string && data.entityType.size() <= 60)) &&
+        (!('entityId' in data) || (data.entityId is string && data.entityId.size() <= 128)) &&
+        data.isRead is bool &&
+        data.createdByUid is string && data.createdByUid.size() <= 128 &&
+        data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidActivityLog(data) {
+      return data.keys().hasAll([
+          'id', 'actorUid', 'actorName', 'actorRole', 'action', 'entityType', 'entityId', 'summary', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'actorUid', 'actorName', 'actorRole', 'action', 'entityType', 'entityId', 'summary', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.actorUid is string && data.actorUid.size() <= 128 &&
+        data.actorName is string && data.actorName.size() <= 120 &&
+        data.actorRole is string && data.actorRole.size() <= 40 &&
+        data.action is string && data.action.size() <= 60 &&
+        data.entityType is string && data.entityType.size() <= 60 &&
+        data.entityId is string && data.entityId.size() <= 128 &&
+        data.summary is string && data.summary.size() <= 500 &&
+        data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    // ====================
+    // COLLECTION RULES
+    // ====================
+
+    // Connection health check path
+    match /test/{docId} {
+      allow get: if docId == 'connection' && isSignedIn();
+    }
+
+    // Company Settings: Publicly readable by authenticated users (bank details on invoices/forms); writable ONLY by Super Admin
+    match /settings/{settingId} {
+      allow get: if isValidId(settingId) && isSignedIn();
+      allow list: if false;
+      allow create, update: if isValidId(settingId) && settingId == 'company' && isSuperAdmin() && isValidCompanySettings(incoming());
+      allow delete: if false;
+    }
+
+    // Staff Profiles (PII Isolated): Own profile or Admin/Finance
+    match /staff/{uid} {
+      allow get: if isValidId(uid) && (isOwner(uid) || isAdmin() || isFinance());
+      allow list: if isAdmin() || isFinance();
+      allow create: if isValidId(uid) && isSignedIn() && isValidStaffMember(incoming()) && incoming().uid == uid && (
+        isSuperAdmin() ||
+        (isOwner(uid) && isBootstrappedSuperAdmin() && incoming().role == 'super_admin' && incoming().employmentStatus == 'active') ||
+        (isOwner(uid) && ('inviteId' in incoming()) &&
+          exists(/databases/$(database)/documents/staffInvites/$(incoming().inviteId)) &&
+          get(/databases/$(database)/documents/staffInvites/$(incoming().inviteId)).data.email.lower() == authEmail() &&
+          get(/databases/$(database)/documents/staffInvites/$(incoming().inviteId)).data.status == 'invited' &&
+          incoming().role == get(/databases/$(database)/documents/staffInvites/$(incoming().inviteId)).data.role &&
+          incoming().employmentStatus == 'active') ||
+        (isOwner(uid) && incoming().role in ['sales', 'developer', 'support'] && incoming().employmentStatus == 'pending')
+      );
+      allow update: if isValidId(uid) && isSignedIn() && isValidStaffMember(incoming()) && incoming().uid == existing().uid && (
+        isSuperAdmin() ||
+        (isOwner(uid) && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'phone', 'bankName', 'bankAccountNumber', 'bankAccountName', 'updatedAt']))
+      );
+      allow delete: if isValidId(uid) && isSuperAdmin();
+    }
+
+    // Public Staff Directory (No PII)
+    match /staffPublic/{uid} {
+      allow get: if isValidId(uid) && (isOwner(uid) || isActiveStaff());
+      allow list: if isActiveStaff();
+      allow create: if isValidId(uid) && isValidStaffPublic(incoming()) && incoming().uid == uid && (
+        isSuperAdmin() ||
+        (isOwner(uid) && isBootstrappedSuperAdmin() && incoming().role == 'super_admin' && incoming().employmentStatus == 'active') ||
+        (isOwner(uid) && existsAfter(/databases/$(database)/documents/staff/$(uid)) && getAfter(/databases/$(database)/documents/staff/$(uid)).data.role == incoming().role && getAfter(/databases/$(database)/documents/staff/$(uid)).data.employmentStatus == incoming().employmentStatus) ||
+        (isOwner(uid) && incoming().role in ['sales', 'developer', 'support'] && incoming().employmentStatus == 'pending')
+      );
+      allow update: if isValidId(uid) && isValidStaffPublic(incoming()) && incoming().uid == existing().uid && (
+        isSuperAdmin() ||
+        (isOwner(uid) && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'updatedAt']))
+      );
+      allow delete: if isValidId(uid) && isSuperAdmin();
+    }
+
+    // Staff Invites
+    match /staffInvites/{inviteId} {
+      allow get: if isValidId(inviteId) && (isSuperAdmin() || (isSignedIn() && existing().email.lower() == authEmail()));
+      allow list: if isSuperAdmin() || (isSignedIn() && resource.data.email == authEmail());
+      allow create: if isValidId(inviteId) && isSuperAdmin() && isValidStaffInvite(incoming()) && incoming().id == inviteId;
+      allow update: if isValidId(inviteId) && isValidStaffInvite(incoming()) && incoming().id == existing().id && (
+        isSuperAdmin() ||
+        (isSignedIn() && existing().email.lower() == authEmail() && existing().status == 'invited' && incoming().status == 'claimed' && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']))
+      );
+      allow delete: if isValidId(inviteId) && isSuperAdmin();
+    }
+
+    // Customers
+    match /customers/{customerId} {
+      allow get: if isValidId(customerId) && (
+        isAdmin() || isFinance() || isSupport() ||
+        (isSales() && existing().salesRepUid == request.auth.uid) ||
+        (isSignedIn() && (existing().email.lower() == authEmail() || existing().customerUid == request.auth.uid))
+      );
+      allow list: if isAdmin() || isFinance() || isSupport() ||
+        (isSales() && resource.data.salesRepUid == request.auth.uid) ||
+        (isSignedIn() && resource.data.email == authEmail());
+      allow create: if isValidId(customerId) && isNonDevStaff() && isValidCustomer(incoming()) && incoming().id == customerId && incoming().createdByUid == request.auth.uid;
+      allow update: if isValidId(customerId) && isValidCustomer(incoming()) && incoming().id == existing().id && incoming().createdByUid == existing().createdByUid && (
+        isAdmin() || isSupport() ||
+        (isSales() && existing().salesRepUid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['fullName', 'businessName', 'phone', 'email', 'businessAddress', 'businessCategory', 'notes', 'updatedAt']))
+      );
+      allow delete: if isValidId(customerId) && isSuperAdmin();
+    }
+
+    // Projects (Operational view — excludes confidential financials)
+    match /projects/{projectId} {
+      allow get: if isValidId(projectId) && (
+        isAdmin() || isFinance() || isSupport() ||
+        (isSales() && existing().salesRepUid == request.auth.uid) ||
+        (isDeveloper() && existing().developerUid == request.auth.uid)
+      );
+      allow list: if isAdmin() || isFinance() || isSupport() ||
+        (isSales() && resource.data.salesRepUid == request.auth.uid) ||
+        (isDeveloper() && resource.data.developerUid == request.auth.uid);
+      allow create: if isValidId(projectId) && (isAdmin() || isSales()) && isValidProject(incoming()) && incoming().id == projectId && incoming().createdByUid == request.auth.uid && exists(/databases/$(database)/documents/customers/$(incoming().customerId));
+      allow update: if isValidId(projectId) && isValidProject(incoming()) && incoming().id == existing().id && incoming().createdByUid == existing().createdByUid && (
+        isAdmin() ||
+        (isSales() && existing().salesRepUid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'serviceType', 'deadline', 'description', 'updatedAt'])) ||
+        (isDeveloper() && existing().developerUid == request.auth.uid && existing().status != 'Completed' && existing().status != 'Cancelled' && incoming().status in ['In Progress', 'Under Review', 'Awaiting Information'] && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'progressPercent', 'developerNotes', 'readyForReviewAt', 'updatedAt']))
+      );
+      allow delete: if isValidId(projectId) && isSuperAdmin();
+
+      // Deliverables Subcollection (Master Gate)
+      match /deliverables/{deliverableId} {
+        allow get: if isValidId(projectId) && isValidId(deliverableId) && (
+          isAdmin() || isSupport() ||
+          (isDeveloper() && get(/databases/$(database)/documents/projects/$(projectId)).data.developerUid == request.auth.uid) ||
+          (isSales() && get(/databases/$(database)/documents/projects/$(projectId)).data.salesRepUid == request.auth.uid)
+        );
+        allow list: if isValidId(projectId) && (
+          isAdmin() || isSupport() ||
+          (isDeveloper() && get(/databases/$(database)/documents/projects/$(projectId)).data.developerUid == request.auth.uid) ||
+          (isSales() && get(/databases/$(database)/documents/projects/$(projectId)).data.salesRepUid == request.auth.uid)
+        );
+        allow create: if isValidId(projectId) && isValidId(deliverableId) && isValidDeliverable(incoming()) && incoming().id == deliverableId && incoming().projectId == projectId && incoming().uploadedByUid == request.auth.uid && (
+          isAdmin() ||
+          (isDeveloper() && get(/databases/$(database)/documents/projects/$(projectId)).data.developerUid == request.auth.uid)
+        );
+        allow delete: if isValidId(projectId) && isValidId(deliverableId) && isAdmin();
+      }
+    }
+
+    // Confidential Project Financials (strictly blocked for Developers)
+    match /projectFinancials/{projectId} {
+      allow get: if isValidId(projectId) && (
+        isAdmin() || isFinance() ||
+        (isSales() && existing().salesRepUid == request.auth.uid) ||
+        (isSignedIn() && existing().customerEmail.lower() == authEmail())
+      );
+      allow list: if isAdmin() || isFinance() ||
+        (isSales() && resource.data.salesRepUid == request.auth.uid) ||
+        (isSignedIn() && resource.data.customerEmail == authEmail());
+      allow create: if isValidId(projectId) && (isAdmin() || isSales()) && isValidProjectFinancial(incoming()) && incoming().projectId == projectId;
+      allow update: if isValidId(projectId) && isValidProjectFinancial(incoming()) && incoming().projectId == existing().projectId && (isAdmin() || isFinance());
+      allow delete: if false;
+    }
+
+    // Customer Onboarding Forms
+    match /onboardingForms/{formId} {
+      allow get: if isValidId(formId) && (
+        isAdmin() || isSupport() ||
+        (isSales() && existing().salesRepUid == request.auth.uid) ||
+        (isDeveloper() && existing().developerUid == request.auth.uid) ||
+        (isSignedIn() && (existing().customerEmail.lower() == authEmail() || existing().submittedByUid == request.auth.uid))
+      );
+      allow list: if isAdmin() || isSupport() ||
+        (isSales() && resource.data.salesRepUid == request.auth.uid) ||
+        (isDeveloper() && resource.data.developerUid == request.auth.uid) ||
+        (isSignedIn() && resource.data.customerEmail == authEmail());
+      allow create: if isValidId(formId) && isNonDevStaff() && isValidOnboardingForm(incoming()) && incoming().id == formId && incoming().createdByUid == request.auth.uid && exists(/databases/$(database)/documents/customers/$(incoming().customerId));
+      allow update: if isValidId(formId) && isValidOnboardingForm(incoming()) && incoming().id == existing().id && incoming().customerId == existing().customerId && incoming().createdByUid == existing().createdByUid && (
+        isAdmin() || isSupport() ||
+        (isSales() && existing().salesRepUid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['projectId', 'developerUid', 'status', 'servicePurchased', 'updatedAt'])) ||
+        (isSignedIn() && existing().customerEmail.lower() == authEmail() && existing().status == 'Pending' && incoming().status == 'Submitted' && incoming().submittedByUid == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly([
+          'status', 'fullName', 'businessName', 'phone', 'email', 'businessAddress',
+          'businessCategory', 'servicePurchased', 'businessDescription', 'requirementsDescription',
+          'serviceSpecificAnswers', 'logoUrl', 'attachmentUrls', 'submittedByUid', 'submittedAt', 'updatedAt'
+        ]))
+      );
+      allow delete: if isValidId(formId) && isSuperAdmin();
+    }
+
+    // Invoices (No Developers; No Deletes)
+    match /invoices/{invoiceId} {
+      allow get: if isValidId(invoiceId) && (
+        isAdmin() || isFinance() ||
+        (isSales() && existing().salesRepUid == request.auth.uid) ||
+        (isSignedIn() && existing().customerEmail.lower() == authEmail())
+      );
+      allow list: if isAdmin() || isFinance() ||
+        (isSales() && resource.data.salesRepUid == request.auth.uid) ||
+        (isSignedIn() && resource.data.customerEmail == authEmail());
+      allow create: if isValidId(invoiceId) && (isAdmin() || isFinance() || isSales()) && isValidInvoice(incoming()) && incoming().id == invoiceId && incoming().createdByUid == request.auth.uid && exists(/databases/$(database)/documents/customers/$(incoming().customerId));
+      allow update: if isValidId(invoiceId) && isValidInvoice(incoming()) && incoming().id == existing().id && incoming().createdByUid == existing().createdByUid && (isAdmin() || isFinance());
+      allow delete: if false;
+    }
+
+    // Payments (Staff creates pending; only Admin/Finance verifies; No Deletes)
+    match /payments/{paymentId} {
+      allow get: if isValidId(paymentId) && (
+        isAdmin() || isFinance() ||
+        (isSales() && existing().salesRepUid == request.auth.uid) ||
+        (isSignedIn() && existing().customerEmail.lower() == authEmail())
+      );
+      allow list: if isAdmin() || isFinance() ||
+        (isSales() && resource.data.salesRepUid == request.auth.uid) ||
+        (isSignedIn() && resource.data.customerEmail == authEmail());
+      allow create: if isValidId(paymentId) && isNonDevStaff() && isValidPayment(incoming()) && incoming().id == paymentId && incoming().recordedByUid == request.auth.uid && incoming().verificationStatus == 'pending' && exists(/databases/$(database)/documents/projects/$(incoming().projectId));
+      allow update: if isValidId(paymentId) && isValidPayment(incoming()) && incoming().id == existing().id && incoming().recordedByUid == existing().recordedByUid && (isAdmin() || isFinance()) && existing().verificationStatus == 'pending' && incoming().verificationStatus in ['confirmed', 'rejected'];
+      allow delete: if false;
+    }
+
+    // Commissions (No Deletes)
+    match /commissions/{commissionId} {
+      allow get: if isValidId(commissionId) && (
+        isAdmin() || isFinance() ||
+        (isSales() && existing().salesRepUid == request.auth.uid)
+      );
+      allow list: if isAdmin() || isFinance() ||
+        (isSales() && resource.data.salesRepUid == request.auth.uid);
+      allow create: if isValidId(commissionId) && (isAdmin() || isFinance()) && isValidCommission(incoming()) && incoming().id == commissionId;
+      allow update: if isValidId(commissionId) && (isAdmin() || isFinance()) && isValidCommission(incoming()) && incoming().id == existing().id && existing().payoutStatus != 'paid';
+      allow delete: if false;
+    }
+
+    // Expenses (Admin / Finance only; No Deletes)
+    match /expenses/{expenseId} {
+      allow get, list: if isAdmin() || isFinance();
+      allow create: if isValidId(expenseId) && (isAdmin() || isFinance()) && isValidExpense(incoming()) && incoming().id == expenseId && incoming().recordedByUid == request.auth.uid;
+      allow update: if isValidId(expenseId) && isSuperAdmin() && isValidExpense(incoming()) && incoming().id == existing().id;
+      allow delete: if false;
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow get: if isValidId(notificationId) && (
+        isAdmin() ||
+        (isActiveStaff() && (existing().targetRole == 'staff' || existing().targetUid == request.auth.uid))
+      );
+      allow list: if isAdmin() ||
+        (isActiveStaff() && (resource.data.targetRole == 'staff' || resource.data.targetUid == request.auth.uid));
+      allow create: if isValidId(notificationId) && isSignedIn() && isValidNotification(incoming()) && incoming().id == notificationId && incoming().createdByUid == request.auth.uid;
+      allow update: if isValidId(notificationId) && isValidNotification(incoming()) && incoming().id == existing().id && incoming().diff(existing()).affectedKeys().hasOnly(['isRead']) && (
+        isAdmin() ||
+        (isActiveStaff() && (existing().targetRole == 'staff' || existing().targetUid == request.auth.uid))
+      );
+      allow delete: if isValidId(notificationId) && isSuperAdmin();
+    }
+
+    // Immutable Activity Logs
+    match /activityLogs/{logId} {
+      allow get, list: if isAdmin();
+      allow create: if isValidId(logId) && isSignedIn() && isValidActivityLog(incoming()) && incoming().id == logId && incoming().actorUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

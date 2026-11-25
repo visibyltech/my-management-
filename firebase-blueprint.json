@@ -1,0 +1,432 @@
+{
+  "entities": {
+    "CompanySettings": {
+      "title": "CompanySettings",
+      "description": "Permanent company banking, payment thresholds, commission defaults, and service/department catalogs controlled by Super Admin.",
+      "type": "object",
+      "properties": {
+        "companyName": { "type": "string", "maxLength": 120 },
+        "tagline": { "type": "string", "maxLength": 160 },
+        "companyEmail": { "type": "string", "format": "email", "maxLength": 160 },
+        "companyPhone": { "type": "string", "maxLength": 40 },
+        "companyAddress": { "type": "string", "maxLength": 300 },
+        "bankAccountName": { "type": "string", "maxLength": 120 },
+        "bankName": { "type": "string", "maxLength": 120 },
+        "bankAccountNumber": { "type": "string", "pattern": "^[0-9]{10}$", "maxLength": 20 },
+        "minimumPaymentAmount": { "type": "number" },
+        "commissionMode": { "type": "string", "enum": ["percentage", "fixed"] },
+        "defaultCommissionRate": { "type": "number" },
+        "defaultFixedCommission": { "type": "number" },
+        "departments": { "type": "array" },
+        "services": { "type": "array" },
+        "updatedByUid": { "type": "string", "maxLength": 128 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "companyName",
+        "bankAccountName",
+        "bankName",
+        "bankAccountNumber",
+        "minimumPaymentAmount",
+        "commissionMode",
+        "defaultCommissionRate",
+        "defaultFixedCommission",
+        "updatedAt"
+      ]
+    },
+    "StaffMember": {
+      "title": "StaffMember",
+      "description": "Internal staff profile with department, role, employment status, and payout bank details.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "staffCode": { "type": "string", "pattern": "^VSB-STF-[0-9]{4,8}$", "maxLength": 32 },
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "department": { "type": "string", "maxLength": 80 },
+        "position": { "type": "string", "maxLength": 80 },
+        "role": { "type": "string", "enum": ["super_admin", "admin", "sales", "developer", "finance", "support"] },
+        "employmentStatus": { "type": "string", "enum": ["pending", "active", "suspended", "revoked"] },
+        "bankName": { "type": "string", "maxLength": 80 },
+        "bankAccountNumber": { "type": "string", "maxLength": 20 },
+        "bankAccountName": { "type": "string", "maxLength": 120 },
+        "commissionRateOverride": { "type": "number" },
+        "inviteId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "staffCode", "fullName", "email", "department", "position", "role", "employmentStatus", "createdAt", "updatedAt"]
+    },
+    "StaffPublic": {
+      "title": "StaffPublic",
+      "description": "Non-PII staff directory entry for project assignments and internal lookup.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "staffCode": { "type": "string", "maxLength": 32 },
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "department": { "type": "string", "maxLength": 80 },
+        "position": { "type": "string", "maxLength": 80 },
+        "role": { "type": "string", "enum": ["super_admin", "admin", "sales", "developer", "finance", "support"] },
+        "employmentStatus": { "type": "string", "enum": ["pending", "active", "suspended", "revoked"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "staffCode", "fullName", "department", "position", "role", "employmentStatus", "updatedAt"]
+    },
+    "StaffInvite": {
+      "title": "StaffInvite",
+      "description": "Pending staff account pre-created by Super Admin before first sign-in.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "staffCode": { "type": "string", "maxLength": 32 },
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "department": { "type": "string", "maxLength": 80 },
+        "position": { "type": "string", "maxLength": 80 },
+        "role": { "type": "string", "enum": ["admin", "sales", "developer", "finance", "support"] },
+        "bankName": { "type": "string", "maxLength": 80 },
+        "bankAccountNumber": { "type": "string", "maxLength": 20 },
+        "bankAccountName": { "type": "string", "maxLength": 120 },
+        "status": { "type": "string", "enum": ["invited", "claimed", "revoked"] },
+        "createdByUid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "staffCode", "fullName", "email", "department", "position", "role", "status", "createdByUid", "createdAt", "updatedAt"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Registered customer profile with unique Customer ID and Customer Account Number.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "customerCode": { "type": "string", "pattern": "^VSB-CUS-[0-9]{4,8}$", "maxLength": 32 },
+        "accountNumber": { "type": "string", "pattern": "^[0-9]{10}$", "maxLength": 20 },
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "businessName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "phone": { "type": "string", "minLength": 5, "maxLength": 40 },
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "businessAddress": { "type": "string", "maxLength": 300 },
+        "businessCategory": { "type": "string", "maxLength": 100 },
+        "registrationDate": { "type": "string", "maxLength": 40 },
+        "salesRepUid": { "type": "string", "maxLength": 128 },
+        "salesRepName": { "type": "string", "maxLength": 120 },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "customerUid": { "type": "string", "maxLength": 128 },
+        "createdByUid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "customerCode", "accountNumber", "fullName", "businessName", "phone", "email", "businessAddress", "registrationDate", "salesRepUid", "salesRepName", "createdByUid", "createdAt", "updatedAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Operational project record accessible to authorized staff and assigned developer (excludes confidential financial pricing).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "projectCode": { "type": "string", "pattern": "^VSB-PRJ-[0-9]{4,8}$", "maxLength": 32 },
+        "title": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "serviceType": { "type": "string", "maxLength": 120 },
+        "customerId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "customerCode": { "type": "string", "maxLength": 32 },
+        "customerName": { "type": "string", "maxLength": 120 },
+        "customerBusinessName": { "type": "string", "maxLength": 160 },
+        "salesRepUid": { "type": "string", "maxLength": 128 },
+        "salesRepName": { "type": "string", "maxLength": 120 },
+        "developerUid": { "type": "string", "maxLength": 128 },
+        "developerName": { "type": "string", "maxLength": 120 },
+        "status": { "type": "string", "enum": ["Pending", "Awaiting Information", "In Progress", "Under Review", "Completed", "Cancelled"] },
+        "progressPercent": { "type": "number" },
+        "startDate": { "type": "string", "maxLength": 40 },
+        "deadline": { "type": "string", "maxLength": 40 },
+        "description": { "type": "string", "maxLength": 4000 },
+        "developerNotes": { "type": "string", "maxLength": 4000 },
+        "readyForReviewAt": { "type": "string", "maxLength": 64 },
+        "createdByUid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "projectCode", "title", "serviceType", "customerId", "customerCode", "customerName", "customerBusinessName", "salesRepUid", "salesRepName", "status", "progressPercent", "startDate", "deadline", "createdByUid", "createdAt", "updatedAt"]
+    },
+    "ProjectDeliverable": {
+      "title": "ProjectDeliverable",
+      "description": "Completed work or progress artifact uploaded by assigned developer or admin.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "projectId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 160 },
+        "fileName": { "type": "string", "maxLength": 200 },
+        "fileUrl": { "type": "string", "maxLength": 1000 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "uploadedByUid": { "type": "string", "maxLength": 128 },
+        "uploadedByName": { "type": "string", "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "projectId", "title", "fileUrl", "uploadedByUid", "uploadedByName", "createdAt"]
+    },
+    "ProjectFinancial": {
+      "title": "ProjectFinancial",
+      "description": "Confidential project pricing and balance tracking isolated from Developers.",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "customerId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "customerEmail": { "type": "string", "format": "email", "maxLength": 160 },
+        "salesRepUid": { "type": "string", "maxLength": 128 },
+        "agreedPrice": { "type": "number" },
+        "totalPaid": { "type": "number" },
+        "outstandingBalance": { "type": "number" },
+        "paymentStatus": { "type": "string", "enum": ["Unpaid", "Partially Paid", "Fully Paid"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "customerId", "salesRepUid", "agreedPrice", "totalPaid", "outstandingBalance", "paymentStatus", "updatedAt"]
+    },
+    "OnboardingForm": {
+      "title": "OnboardingForm",
+      "description": "Private customer onboarding form and submitted project materials.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "formCode": { "type": "string", "maxLength": 40 },
+        "customerId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "customerCode": { "type": "string", "maxLength": 32 },
+        "customerEmail": { "type": "string", "format": "email", "maxLength": 160 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "salesRepUid": { "type": "string", "maxLength": 128 },
+        "developerUid": { "type": "string", "maxLength": 128 },
+        "status": { "type": "string", "enum": ["Pending", "Submitted", "Reviewed"] },
+        "fullName": { "type": "string", "maxLength": 120 },
+        "businessName": { "type": "string", "maxLength": 160 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "email": { "type": "string", "maxLength": 160 },
+        "businessAddress": { "type": "string", "maxLength": 300 },
+        "businessCategory": { "type": "string", "maxLength": 100 },
+        "servicePurchased": { "type": "string", "maxLength": 120 },
+        "businessDescription": { "type": "string", "maxLength": 4000 },
+        "requirementsDescription": { "type": "string", "maxLength": 5000 },
+        "serviceSpecificAnswers": { "type": "object" },
+        "logoUrl": { "type": "string", "maxLength": 1000 },
+        "attachmentUrls": { "type": "array" },
+        "submittedByUid": { "type": "string", "maxLength": 128 },
+        "submittedAt": { "type": "string", "maxLength": 64 },
+        "createdByUid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "formCode", "customerId", "customerEmail", "salesRepUid", "status", "servicePurchased", "createdByUid", "createdAt", "updatedAt"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Official VISIBYL corporate invoice with Kuda Bank payment instructions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "invoiceNumber": { "type": "string", "pattern": "^VSB-INV-[0-9]{4}-[0-9]{4,8}$", "maxLength": 40 },
+        "customerId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "customerCode": { "type": "string", "maxLength": 32 },
+        "customerName": { "type": "string", "maxLength": 120 },
+        "customerBusinessName": { "type": "string", "maxLength": 160 },
+        "customerEmail": { "type": "string", "format": "email", "maxLength": 160 },
+        "customerPhone": { "type": "string", "maxLength": 40 },
+        "customerAddress": { "type": "string", "maxLength": 300 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "projectCode": { "type": "string", "maxLength": 32 },
+        "salesRepUid": { "type": "string", "maxLength": 128 },
+        "issueDate": { "type": "string", "maxLength": 40 },
+        "dueDate": { "type": "string", "maxLength": 40 },
+        "items": { "type": "array" },
+        "totalAmount": { "type": "number" },
+        "amountPaid": { "type": "number" },
+        "outstandingBalance": { "type": "number" },
+        "status": { "type": "string", "enum": ["Unpaid", "Partially Paid", "Paid", "Overdue"] },
+        "notes": { "type": "string", "maxLength": 2000 },
+        "createdByUid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "invoiceNumber", "customerId", "customerName", "customerEmail", "salesRepUid", "issueDate", "dueDate", "items", "totalAmount", "amountPaid", "outstandingBalance", "status", "createdByUid", "createdAt", "updatedAt"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Customer payment record requiring Admin verification before counting toward confirmed revenue.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "receiptNumber": { "type": "string", "maxLength": 40 },
+        "projectId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "projectCode": { "type": "string", "maxLength": 32 },
+        "invoiceId": { "type": "string", "maxLength": 128 },
+        "invoiceNumber": { "type": "string", "maxLength": 40 },
+        "customerId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "customerName": { "type": "string", "maxLength": 120 },
+        "customerEmail": { "type": "string", "format": "email", "maxLength": 160 },
+        "salesRepUid": { "type": "string", "maxLength": 128 },
+        "amount": { "type": "number" },
+        "paymentMethod": { "type": "string", "maxLength": 80 },
+        "paymentDate": { "type": "string", "maxLength": 40 },
+        "transactionReference": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "verificationStatus": { "type": "string", "enum": ["pending", "confirmed", "rejected"] },
+        "recordedByUid": { "type": "string", "maxLength": 128 },
+        "recordedByName": { "type": "string", "maxLength": 120 },
+        "verifiedByUid": { "type": "string", "maxLength": 128 },
+        "verifiedByName": { "type": "string", "maxLength": 120 },
+        "verifiedAt": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "receiptNumber", "projectId", "customerId", "customerName", "salesRepUid", "amount", "paymentMethod", "paymentDate", "transactionReference", "verificationStatus", "recordedByUid", "recordedByName", "createdAt", "updatedAt"]
+    },
+    "Commission": {
+      "title": "Commission",
+      "description": "Sales commission ledger generated from confirmed customer payments.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "salesRepUid": { "type": "string", "maxLength": 128 },
+        "salesRepName": { "type": "string", "maxLength": 120 },
+        "customerId": { "type": "string", "maxLength": 128 },
+        "customerName": { "type": "string", "maxLength": 120 },
+        "projectId": { "type": "string", "maxLength": 128 },
+        "projectCode": { "type": "string", "maxLength": 32 },
+        "paymentId": { "type": "string", "maxLength": 128 },
+        "confirmedPaymentAmount": { "type": "number" },
+        "commissionType": { "type": "string", "enum": ["percentage", "fixed"] },
+        "commissionRate": { "type": "number" },
+        "commissionAmount": { "type": "number" },
+        "payoutStatus": { "type": "string", "enum": ["unpaid", "approved", "paid"] },
+        "payoutReference": { "type": "string", "maxLength": 120 },
+        "approvedByUid": { "type": "string", "maxLength": 128 },
+        "paidAt": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "salesRepUid", "salesRepName", "customerId", "projectId", "paymentId", "confirmedPaymentAmount", "commissionType", "commissionRate", "commissionAmount", "payoutStatus", "createdAt", "updatedAt"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Company expense ledger with category, payment method, and receipt attachment.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "expenseCode": { "type": "string", "maxLength": 40 },
+        "description": { "type": "string", "minLength": 2, "maxLength": 300 },
+        "category": { "type": "string", "maxLength": 80 },
+        "amount": { "type": "number" },
+        "expenseDate": { "type": "string", "maxLength": 40 },
+        "paymentMethod": { "type": "string", "maxLength": 80 },
+        "responsiblePerson": { "type": "string", "maxLength": 120 },
+        "receiptUrl": { "type": "string", "maxLength": 1000 },
+        "receiptName": { "type": "string", "maxLength": 200 },
+        "recordedByUid": { "type": "string", "maxLength": 128 },
+        "recordedByName": { "type": "string", "maxLength": 120 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "expenseCode", "description", "category", "amount", "expenseDate", "paymentMethod", "responsiblePerson", "recordedByUid", "recordedByName", "createdAt", "updatedAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Operational notification for staff and admins.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "targetRole": { "type": "string", "enum": ["admins", "staff", "user"] },
+        "targetUid": { "type": "string", "maxLength": 128 },
+        "type": { "type": "string", "maxLength": 60 },
+        "title": { "type": "string", "maxLength": 160 },
+        "message": { "type": "string", "maxLength": 500 },
+        "entityType": { "type": "string", "maxLength": 60 },
+        "entityId": { "type": "string", "maxLength": 128 },
+        "isRead": { "type": "boolean" },
+        "createdByUid": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "targetRole", "type", "title", "message", "isRead", "createdByUid", "createdAt"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Immutable audit log tracking create, modify, approve, and status events.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "maxLength": 128 },
+        "actorUid": { "type": "string", "maxLength": 128 },
+        "actorName": { "type": "string", "maxLength": 120 },
+        "actorRole": { "type": "string", "maxLength": 40 },
+        "action": { "type": "string", "maxLength": 60 },
+        "entityType": { "type": "string", "maxLength": 60 },
+        "entityId": { "type": "string", "maxLength": 128 },
+        "summary": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "actorUid", "actorName", "actorRole", "action", "entityType", "entityId", "summary", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/CompanySettings" },
+      "description": "Company-wide configuration including Kuda Bank details, payment minimums, and commission settings."
+    },
+    "/staff/{uid}": {
+      "schema": { "$ref": "#/entities/StaffMember" },
+      "description": "Private staff records including PII and bank payout details."
+    },
+    "/staffPublic/{uid}": {
+      "schema": { "$ref": "#/entities/StaffPublic" },
+      "description": "Non-PII staff directory for assignment dropdowns."
+    },
+    "/staffInvites/{inviteId}": {
+      "schema": { "$ref": "#/entities/StaffInvite" },
+      "description": "Pre-authorized staff invitations created by Super Admin."
+    },
+    "/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Customer records with Customer ID and unique 10-digit Account Number."
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Operational project records and statuses."
+    },
+    "/projects/{projectId}/deliverables/{deliverableId}": {
+      "schema": { "$ref": "#/entities/ProjectDeliverable" },
+      "description": "Completed work deliverables uploaded by assigned developers."
+    },
+    "/projectFinancials/{projectId}": {
+      "schema": { "$ref": "#/entities/ProjectFinancial" },
+      "description": "Confidential project pricing and balances restricted from developer accounts."
+    },
+    "/onboardingForms/{formId}": {
+      "schema": { "$ref": "#/entities/OnboardingForm" },
+      "description": "Private customer onboarding forms and uploaded assets."
+    },
+    "/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/entities/Invoice" },
+      "description": "Corporate invoices generated for customers and projects."
+    },
+    "/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/Payment" },
+      "description": "Customer payment records pending or confirmed by Admin."
+    },
+    "/commissions/{commissionId}": {
+      "schema": { "$ref": "#/entities/Commission" },
+      "description": "Sales commission ledger entries."
+    },
+    "/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/Expense" },
+      "description": "Business expense records and receipts."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Real-time operational notifications."
+    },
+    "/activityLogs/{logId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Immutable activity and audit log."
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Visibyl Operations",
+  "description": "Internal business management platform for VISIBYL Technologies — managing customers, staff, projects, invoices, payments, onboarding forms, commissions, expenses, and company finances.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
