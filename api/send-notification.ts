@@ -67,6 +67,9 @@ export default async function handler(req: IncomingMessage & { method?: string; 
     if (event === 'staff_application') {
       subject = 'New VISIBYL staff access application';
       html = `<h2>New staff application</h2><p><b>Name:</b> ${escapeHtml(body.staffName || 'Not provided')}</p><p><b>Email:</b> ${escapeHtml(body.staffEmail || user.email)}</p><p><b>Department:</b> ${escapeHtml(body.department || 'Not provided')}</p><p><b>Requested role:</b> ${escapeHtml(body.requestedRole || 'Not provided')}</p><p>Sign in to VISIBYL Ops to review and approve this request.</p>`;
+    } else if (event === 'customer_onboarding_submitted') {
+      subject = 'New VISIBYL customer onboarding form submitted';
+      html = `<h2>New customer onboarding submission</h2><p><b>Contact:</b> ${escapeHtml(body.staffName || 'Not provided')}</p><p><b>Email:</b> ${escapeHtml(body.staffEmail || user.email)}</p><p><b>Business:</b> ${escapeHtml(body.department || 'Not provided')}</p><p><b>Service:</b> ${escapeHtml(body.requestedRole || 'Not provided')}</p><p>Sign in to VISIBYL Ops to review the complete form and uploaded business logo.</p>`;
     } else if (event === 'staff_approved' || event === 'staff_rejected') {
       subject = event === 'staff_approved' ? 'VISIBYL staff application approved' : 'VISIBYL staff application update';
       html = `<h2>${event === 'staff_approved' ? 'Staff application approved' : 'Staff application not approved'}</h2><p>Name: ${escapeHtml(body.staffName || '')}</p><p>Staff email: ${escapeHtml(body.staffEmail || '')}</p><p>Sandbox test notification. In production, this will be delivered to the staff member after a verified sender domain is configured.</p>`;
