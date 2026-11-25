@@ -32,7 +32,7 @@ import {
   generateStaffCode,
 } from '../utils/formatters';
 
-const SUPER_ADMIN_EMAIL = 'usitakatelvin@gmail.com';
+const SUPER_ADMIN_EMAIL = 'visibyl.biz@gmail.com';
 
 interface AuthContextValue {
   firebaseUser: User | null;
