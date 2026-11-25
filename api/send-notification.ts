@@ -73,6 +73,7 @@ export default async function handler(req: IncomingMessage & { method?: string; 
       if (!sandboxMode && body.staffEmail) to = body.staffEmail;
     } else if (event === 'commission_paid') {
       subject = 'VISIBYL commission payout recorded';
+      if (!sandboxMode && body.staffEmail) to = body.staffEmail;
       html = `<h2>Commission payout recorded</h2><p>Staff: ${escapeHtml(body.staffName || '')}</p><p>Amount: ₦${Number(body.commissionAmount || 0).toLocaleString('en-NG')}</p><p>Reference: ${escapeHtml(body.commissionReference || 'Not provided')}</p><p>Sandbox test notification.</p>`;
     } else {
       return send(400, { error: 'Unsupported notification event.' });
