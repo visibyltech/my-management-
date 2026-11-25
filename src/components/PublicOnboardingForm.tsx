@@ -185,6 +185,17 @@ export const PublicOnboardingForm: React.FC<PublicOnboardingFormProps> = ({ form
       });
 
       await batch.commit();
+      // Notify Super Admin by email after the customer form is safely saved.
+      try {
+        const idToken = await firebaseUser.getIdToken();
+        await fetch('/api/send-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify({ event: 'customer_onboarding_submitted', staffName: fullName.trim(), staffEmail: email.trim(), department: businessName.trim(), requestedRole: servicePurchased }),
+        });
+      } catch (emailError) {
+        console.warn('Onboarding form saved, but email notification could not be sent:', emailError);
+      }
       setFormDoc(updated);
       setSubmittedOk(true);
     } catch (err) {
