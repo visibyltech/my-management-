@@ -16,6 +16,7 @@ import {
   getDocs,
   query,
   where,
+  setDoc,
   writeBatch,
 } from 'firebase/firestore';
 import {
@@ -335,23 +336,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updatedAt: now,
     };
     try {
+      // Commit the pending staff request first. Admin notification is best-effort
+      // so a notification write cannot roll back the staff application.
       const batch = writeBatch(db);
       batch.set(doc(db, 'staff', firebaseUser.uid), newStaff);
       batch.set(doc(db, 'staffPublic', firebaseUser.uid), newPublic);
-      const notifId = `NTF_${Date.now().toString(36).toUpperCase()}`;
-      batch.set(doc(db, 'notifications', notifId), {
-        id: notifId,
-        targetRole: 'admins',
-        type: 'staff_registered',
-        title: 'New Staff Registration Request',
-        message: `${newStaff.fullName} (${newStaff.department}) requested staff access.`,
-        entityType: 'staff',
-        entityId: firebaseUser.uid,
-        isRead: false,
-        createdByUid: firebaseUser.uid,
-        createdAt: now,
-      });
       await batch.commit();
+
+      const notifId = `NTF_${Date.now().toString(36).toUpperCase()}`;
+      try {
+        await setDoc(doc(db, 'notifications', notifId), {
+          id: notifId,
+          targetRole: 'admins',
+          type: 'staff_registered',
+          title: 'New Staff Registration Request',
+          message: `${newStaff.fullName} (${newStaff.department}) requested staff access.`,
+          entityType: 'staff',
+          entityId: firebaseUser.uid,
+          isRead: false,
+          createdByUid: firebaseUser.uid,
+          createdAt: now,
+        });
+      } catch (notificationError) {
+        console.warn('Staff request saved; admin notification could not be created:', notificationError);
+      }
       setStaffProfile(newStaff);
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `staff/${firebaseUser.uid}`);
