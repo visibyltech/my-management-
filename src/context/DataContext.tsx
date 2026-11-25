@@ -1258,7 +1258,42 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           entityId: commissionId,
         }
       );
+      // A commission becomes a company expense only when the Super Admin records it as paid.
+      // The deterministic expense ID prevents duplicate expense entries on repeat clicks.
+      if (payoutStatus === 'paid' && existing.payoutStatus !== 'paid') {
+        const expenseId = `EXP-COM-${commissionId}`;
+        const expense: Expense = {
+          id: expenseId,
+          expenseCode: expenseId,
+          description: `Commission payout — ${existing.salesRepName} — ${existing.projectCode || existing.projectId}`,
+          category: 'Staff Commission Payout',
+          amount: existing.commissionAmount,
+          expenseDate: todayISO(),
+          paymentMethod: 'Bank Transfer',
+          responsiblePerson: existing.salesRepName,
+          receiptUrl: '',
+          receiptName: '',
+          recordedByUid: actorUid,
+          recordedByName: actorName,
+          createdAt: now,
+          updatedAt: now,
+        };
+        batch.set(doc(db, 'expenses', expenseId), expense);
+      }
       await batch.commit();
+
+      if (payoutStatus === 'paid' && existing.payoutStatus !== 'paid' && firebaseUser) {
+        try {
+          const idToken = await firebaseUser.getIdToken();
+          await fetch('/api/send-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+            body: JSON.stringify({ event: 'commission_paid', staffName: existing.salesRepName, commissionAmount: existing.commissionAmount, commissionReference: payoutReference || commissionId }),
+          });
+        } catch (emailError) {
+          console.warn('Commission payout saved, but email notification could not be sent:', emailError);
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `commissions/${commissionId}`);
     }
@@ -1367,6 +1402,19 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         summary: `Updated staff ${updated.fullName} (${updated.staffCode}) — Role: ${updated.role}, Status: ${updated.employmentStatus}`,
       });
       await batch.commit();
+
+      if (updates.employmentStatus === 'active' && existing.employmentStatus !== 'active' && firebaseUser) {
+        try {
+          const idToken = await firebaseUser.getIdToken();
+          await fetch('/api/send-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+            body: JSON.stringify({ event: 'staff_approved', staffName: updated.fullName, staffEmail: updated.email }),
+          });
+        } catch (emailError) {
+          console.warn('Staff approval saved, but email notification could not be sent:', emailError);
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `staff/${uid}`);
     }
