@@ -361,6 +361,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('Staff request saved; admin notification could not be created:', notificationError);
       }
       setStaffProfile(newStaff);
+      // Send the staff application alert to the fixed Super Admin inbox.
+      try {
+        const idToken = await firebaseUser.getIdToken();
+        await fetch('/api/send-notification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify({ event: 'staff_application', staffName: newStaff.fullName, staffEmail: newStaff.email, department: newStaff.department, requestedRole: newStaff.role }),
+        });
+      } catch (emailError) {
+        console.warn('Staff application saved, but email notification could not be sent:', emailError);
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `staff/${firebaseUser.uid}`);
     }
