@@ -34,7 +34,7 @@ service cloud.firestore {
     }
 
     function isBootstrappedSuperAdmin() {
-      return isSignedIn() && authEmail() == 'usitakatelvin@gmail.com';
+      return isSignedIn() && authEmail() == 'visibyl.biz@gmail.com';
     }
 
     function staffDocExists() {
@@ -641,17 +641,10 @@ service cloud.firestore {
     }
 
     // Confidential Project Financials (strictly blocked for Developers)
+    // Confidential Project Financials — Super Admin only
     match /projectFinancials/{projectId} {
-      allow get: if isValidId(projectId) && (
-        isAdmin() || isFinance() ||
-        (isSales() && existing().salesRepUid == request.auth.uid) ||
-        (isSignedIn() && existing().customerEmail.lower() == authEmail())
-      );
-      allow list: if isAdmin() || isFinance() ||
-        (isSales() && resource.data.salesRepUid == request.auth.uid) ||
-        (isSignedIn() && resource.data.customerEmail == authEmail());
-      allow create: if isValidId(projectId) && (isAdmin() || isSales()) && isValidProjectFinancial(incoming()) && incoming().projectId == projectId;
-      allow update: if isValidId(projectId) && isValidProjectFinancial(incoming()) && incoming().projectId == existing().projectId && (isAdmin() || isFinance());
+      allow get, list: if isSuperAdmin();
+      allow create, update: if isSuperAdmin() && isValidProjectFinancial(incoming()) && incoming().projectId == projectId;
       allow delete: if false;
     }
 
@@ -696,38 +689,28 @@ service cloud.firestore {
     }
 
     // Payments (Staff creates pending; only Admin/Finance verifies; No Deletes)
+    // Payments: staff may submit pending records; only Super Admin can read or verify them
     match /payments/{paymentId} {
-      allow get: if isValidId(paymentId) && (
-        isAdmin() || isFinance() ||
-        (isSales() && existing().salesRepUid == request.auth.uid) ||
-        (isSignedIn() && existing().customerEmail.lower() == authEmail())
-      );
-      allow list: if isAdmin() || isFinance() ||
-        (isSales() && resource.data.salesRepUid == request.auth.uid) ||
-        (isSignedIn() && resource.data.customerEmail == authEmail());
+      allow get, list: if isSuperAdmin();
       allow create: if isValidId(paymentId) && isNonDevStaff() && isValidPayment(incoming()) && incoming().id == paymentId && incoming().recordedByUid == request.auth.uid && incoming().verificationStatus == 'pending' && exists(/databases/$(database)/documents/projects/$(incoming().projectId));
-      allow update: if isValidId(paymentId) && isValidPayment(incoming()) && incoming().id == existing().id && incoming().recordedByUid == existing().recordedByUid && (isAdmin() || isFinance()) && existing().verificationStatus == 'pending' && incoming().verificationStatus in ['confirmed', 'rejected'];
+      allow update: if isSuperAdmin() && isValidPayment(incoming()) && incoming().id == existing().id && existing().verificationStatus == 'pending' && incoming().verificationStatus in ['confirmed', 'rejected'];
       allow delete: if false;
     }
 
     // Commissions (No Deletes)
+    // Commission and payout information is Super Admin confidential
     match /commissions/{commissionId} {
-      allow get: if isValidId(commissionId) && (
-        isAdmin() || isFinance() ||
-        (isSales() && existing().salesRepUid == request.auth.uid)
-      );
-      allow list: if isAdmin() || isFinance() ||
-        (isSales() && resource.data.salesRepUid == request.auth.uid);
-      allow create: if isValidId(commissionId) && (isAdmin() || isFinance()) && isValidCommission(incoming()) && incoming().id == commissionId;
-      allow update: if isValidId(commissionId) && (isAdmin() || isFinance()) && isValidCommission(incoming()) && incoming().id == existing().id && existing().payoutStatus != 'paid';
+      allow get, list: if isSuperAdmin();
+      allow create, update: if isSuperAdmin() && isValidCommission(incoming()) && incoming().id == commissionId;
       allow delete: if false;
     }
 
     // Expenses (Admin / Finance only; No Deletes)
+    // Company expenses are visible and manageable only by Super Admin
     match /expenses/{expenseId} {
-      allow get, list: if isAdmin() || isFinance();
-      allow create: if isValidId(expenseId) && (isAdmin() || isFinance()) && isValidExpense(incoming()) && incoming().id == expenseId && incoming().recordedByUid == request.auth.uid;
-      allow update: if isValidId(expenseId) && isSuperAdmin() && isValidExpense(incoming()) && incoming().id == existing().id;
+      allow get, list: if isSuperAdmin();
+      allow create: if isSuperAdmin() && isValidExpense(incoming()) && incoming().id == expenseId && incoming().recordedByUid == request.auth.uid;
+      allow update: if isSuperAdmin() && isValidExpense(incoming()) && incoming().id == existing().id;
       allow delete: if false;
     }
 
