@@ -39,6 +39,7 @@ const AppContent: React.FC = () => {
     isActiveStaff,
     isAdmin,
     isFinance,
+    isSuperAdmin,
     isSales,
     isDeveloper,
     isSupport,
@@ -89,18 +90,17 @@ const AppContent: React.FC = () => {
           return true;
         case 'staff':
         case 'expenses':
-          return isAdmin || isFinance;
         case 'invoices':
         case 'payments':
-        case 'commissions':
-          return isAdmin || isFinance || isSales;
         case 'reports':
-          return isAdmin || isFinance || isSales || isSupport;
+          return isSuperAdmin;
+        case 'commissions':
+          return isSuperAdmin || isActiveStaff;
         default:
           return false;
       }
     },
-    [isAdmin, isDeveloper, isFinance, isSales, isSupport]
+    [isActiveStaff, isAdmin, isDeveloper, isFinance, isSales, isSupport, isSuperAdmin]
   );
 
   const handleSelectSection = useCallback(
