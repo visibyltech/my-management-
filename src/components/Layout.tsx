@@ -67,30 +67,27 @@ export const Layout: React.FC<LayoutProps> = ({
       { id: 'customers', label: 'Customers', icon: Users },
     ];
 
-    if (isAdmin || isFinance) {
+    if (isSuperAdmin) {
       items.push({ id: 'staff', label: 'Staff', icon: UserSquare2 });
     }
 
     items.push({ id: 'projects', label: 'Projects', icon: Briefcase });
     items.push({ id: 'onboarding', label: 'Onboarding', icon: FileCheck2 });
 
-    if (isAdmin || isFinance || isSales) {
+    if (isSuperAdmin) {
       items.push({ id: 'invoices', label: 'Invoices', icon: FileSpreadsheet });
       items.push({ id: 'payments', label: 'Payments', icon: CreditCard });
-      items.push({ id: 'commissions', label: 'Commissions', icon: BadgePercent });
-    }
-
-    if (isAdmin || isFinance) {
       items.push({ id: 'expenses', label: 'Expenses', icon: Receipt });
+      items.push({ id: 'reports', label: 'Reports', icon: BarChart3 });
     }
 
-    if (isAdmin || isFinance || isSales || isSupport) {
-      items.push({ id: 'reports', label: 'Reports', icon: BarChart3 });
+    if (isSuperAdmin || isSales || isDeveloper || isSupport) {
+      items.push({ id: 'commissions', label: 'My Commission', icon: BadgePercent });
     }
 
     items.push({ id: 'settings', label: 'Settings', icon: Settings });
     return items;
-  }, [isAdmin, isFinance, isSales, isDeveloper, isSupport]);
+  }, [isAdmin, isFinance, isSales, isDeveloper, isSupport, isSuperAdmin]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
