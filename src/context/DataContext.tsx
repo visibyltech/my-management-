@@ -1288,7 +1288,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           await fetch('/api/send-notification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-            body: JSON.stringify({ event: 'commission_paid', staffName: existing.salesRepName, commissionAmount: existing.commissionAmount, commissionReference: payoutReference || commissionId }),
+            body: JSON.stringify({ event: 'commission_paid', staffName: existing.salesRepName, staffEmail: staffMembers.find((member) => member.uid === existing.salesRepUid)?.email || '', commissionAmount: existing.commissionAmount, commissionReference: payoutReference || commissionId }),
           });
         } catch (emailError) {
           console.warn('Commission payout saved, but email notification could not be sent:', emailError);
