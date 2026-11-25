@@ -2,7 +2,9 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   User,
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
 import {
@@ -17,7 +19,6 @@ import {
 import {
   auth,
   db,
-  googleProvider,
   handleFirestoreError,
   OperationType,
   testConnection,
@@ -44,7 +45,8 @@ interface AuthContextValue {
   isSupport: boolean;
   isActiveStaff: boolean;
   isCustomerOnly: boolean;
-  signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   requestStaffAccess: (payload: {
     fullName: string;
@@ -241,12 +243,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsub();
   }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithEmail = async (email: string, password: string) => {
     setAuthError(null);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      await credential.user.reload();
+      if (!credential.user.emailVerified) {
+        await firebaseSignOut(auth);
+        throw new Error('Please verify your email address before signing in. Check your inbox for the verification link.');
+      }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Google sign-in failed.';
+      const msg = err instanceof Error ? err.message : 'Email sign-in failed.';
+      setAuthError(msg);
+      throw err;
+    }
+  };
+
+  const signUpWithEmail = async (email: string, password: string) => {
+    setAuthError(null);
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      await sendEmailVerification(credential.user);
+      await firebaseSignOut(auth);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Account creation failed.';
       setAuthError(msg);
       throw err;
     }
@@ -363,7 +383,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isSupport,
         isActiveStaff,
         isCustomerOnly,
-        signInWithGoogle,
+        signInWithEmail,
+        signUpWithEmail,
         signOut,
         requestStaffAccess,
         refreshProfile,
