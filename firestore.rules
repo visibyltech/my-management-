@@ -697,11 +697,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // Commissions (No Deletes)
-    // Commission and payout information is Super Admin confidential
+    // Commissions: Super Admin sees all; active staff see only their own
     match /commissions/{commissionId} {
-      allow get, list: if isSuperAdmin();
-      allow create, update: if isSuperAdmin() && isValidCommission(incoming()) && incoming().id == commissionId;
+      allow get: if isSuperAdmin() ||
+        (isActiveStaff() && resource.data.salesRepUid == request.auth.uid);
+      allow list: if isSuperAdmin() ||
+        (isActiveStaff() && resource.data.salesRepUid == request.auth.uid);
+      allow create, update: if isSuperAdmin() &&
+        isValidCommission(incoming()) &&
+        incoming().id == commissionId;
       allow delete: if false;
     }
 
