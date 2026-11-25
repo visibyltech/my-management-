@@ -3,6 +3,8 @@ import {
   User,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
   createUserWithEmailAndPassword,
   sendEmailVerification,
   signOut as firebaseSignOut,
@@ -46,6 +48,7 @@ interface AuthContextValue {
   isActiveStaff: boolean;
   isCustomerOnly: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   signUpWithEmail: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   requestStaffAccess: (payload: {
@@ -259,6 +262,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithGoogle = async () => {
+    setAuthError(null);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Google sign-in failed.';
+      setAuthError(msg);
+      throw err;
+    }
+  };
+
   const signUpWithEmail = async (email: string, password: string) => {
     setAuthError(null);
     try {
@@ -288,7 +304,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     bankAccountName?: string;
   }) => {
     if (!firebaseUser || !firebaseUser.email) {
-      throw new Error('Please sign in with Google first.');
+      throw new Error('Please sign in first.');
     }
     const now = new Date().toISOString();
     const staffCode = generateStaffCode();
@@ -384,6 +400,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isActiveStaff,
         isCustomerOnly,
         signInWithEmail,
+        signInWithGoogle,
         signUpWithEmail,
         signOut,
         requestStaffAccess,
