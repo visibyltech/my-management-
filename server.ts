@@ -145,7 +145,7 @@ async function verifyVisaraCaller(req: Request, res: Response, next: NextFunctio
       return;
     }
 
-    const isBootstrappedSuperAdmin = user.email.toLowerCase() === 'usitakatelvin@gmail.com';
+    const isBootstrappedSuperAdmin = user.email.toLowerCase() === 'visibyl.biz@gmail.com';
     const staffDoc = await fetchFirestoreDoc(cfg, `staff/${user.localId}`, idToken);
 
     const role = isBootstrappedSuperAdmin
