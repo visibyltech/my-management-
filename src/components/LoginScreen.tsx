@@ -60,6 +60,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onOpenOnboardingForm }
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setSigningIn(true);
+    setAuthMessage(null);
+    try {
+      await signInWithGoogle();
+    } catch (err) {
+      setAuthMessage(err instanceof Error ? err.message : 'Google sign-in failed. Please try again.');
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
   const handleStaffRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setReqError(null);
@@ -398,6 +410,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onOpenOnboardingForm }
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
+
+          <div className="relative my-5 flex items-center">
+            <div className="flex-1 border-t border-slate-200" />
+            <span className="px-3 text-xs font-medium text-slate-400">OR</span>
+            <div className="flex-1 border-t border-slate-200" />
+          </div>
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={signingIn}
+            className="w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-60 text-slate-700 text-sm font-semibold transition-colors"
+          >
+            <span className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 text-sm font-bold text-[#4285F4]">G</span>
+            <span>{signingIn ? 'Please wait...' : 'Continue with Google'}</span>
+          </button>
 
           <div className="mt-5 text-center text-sm text-slate-600">
             {authMode === 'signin' ? "Don't have an account?" : 'Already have an account?'}
