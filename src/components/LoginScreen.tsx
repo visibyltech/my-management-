@@ -16,6 +16,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onOpenOnboardingForm }
     staffProfile,
     authError,
     signInWithEmail,
+    signInWithGoogle,
     signUpWithEmail,
     signOut,
     requestStaffAccess,
