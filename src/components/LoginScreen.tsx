@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowRight, CheckCircle2, Clock, FileText, Lock, LogOut, ShieldAlert, UserCheck } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Clock, FileText, Lock, LogOut, ShieldAlert, UserCheck, Mail, KeyRound } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
 import { PWAInstallButton } from './PWAInstallButton';
 import { useAuth } from '../context/AuthContext';
@@ -15,13 +15,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onOpenOnboardingForm }
     firebaseUser,
     staffProfile,
     authError,
-    signInWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
     signOut,
     requestStaffAccess,
   } = useAuth();
   const { customers, onboardingForms, invoices, payments, settings } = useData();
 
   const [signingIn, setSigningIn] = useState(false);
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
   const [showStaffRequest, setShowStaffRequest] = useState(false);
   const [reqSubmitted, setReqSubmitted] = useState(false);
   const [reqError, setReqError] = useState<string | null>(null);
@@ -36,10 +41,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onOpenOnboardingForm }
     bankAccountName: '',
   });
 
-  const handleGoogleSignIn = async () => {
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
     setSigningIn(true);
+    setAuthMessage(null);
     try {
-      await signInWithGoogle();
+      if (authMode === 'signup') {
+        await signUpWithEmail(email.trim(), password);
+        setAuthMessage('Account created. Check your email for a verification link, then sign in.');
+        setAuthMode('signin');
+      } else {
+        await signInWithEmail(email.trim(), password);
+      }
+    } catch (err) {
+      setAuthMessage(err instanceof Error ? err.message : 'Authentication failed. Please try again.');
     } finally {
       setSigningIn(false);
     }
@@ -329,64 +344,69 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onOpenOnboardingForm }
   // Unauthenticated Sign-In Screen
   return (
     <div className="min-h-screen bg-[#0144D8] flex flex-col lg:flex-row">
-      {/* Left Brand Showcase */}
-      <div className="lg:w-7/12 p-8 sm:p-12 lg:p-16 flex flex-col justify-between text-white">
-        <div>
-          <BrandLogo variant="full" className="h-14 sm:h-16 w-auto" />
-        </div>
-
-        <div className="my-12 lg:my-0 max-w-xl">
-          <p className="text-xs font-semibold tracking-wider uppercase text-blue-200">
-            Internal Operations & Finance Platform
-          </p>
-          <h1 className="mt-3 text-3xl sm:text-5xl font-bold leading-tight text-balance">
-            VISIBYL Technologies Business Management System
+      {/* Compact Brand Header */}
+      <div className="lg:w-7/12 p-6 sm:p-10 lg:p-14 flex flex-col justify-center text-white">
+        <div className="max-w-xl">
+          <BrandLogo variant="full" className="h-12 sm:h-14 w-auto" />
+          <h1 className="mt-8 text-3xl sm:text-5xl font-bold leading-tight text-balance">
+            VISIBYL Technologies<br />Business Management System
           </h1>
-          <p className="mt-5 text-base sm:text-lg text-blue-100 leading-relaxed">
-            Unified control for customer accounts, staff operations, project delivery, client onboarding briefs, corporate invoicing, verified Naira payments, commissions, and company finances.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-4 text-xs text-blue-100 border-t border-white/15 pt-6">
-          <span>VISIBYL Technologies · "From unseen to unforgettable."</span>
-          <PWAInstallButton compact />
         </div>
       </div>
 
       {/* Right Sign-In Panel */}
-      <div className="lg:w-5/12 bg-white rounded-t-3xl lg:rounded-none lg:rounded-l-3xl p-8 sm:p-12 lg:p-16 flex flex-col justify-center">
+      <div className="lg:w-5/12 bg-white rounded-t-3xl lg:rounded-none lg:rounded-l-3xl p-6 sm:p-10 lg:p-14 flex flex-col justify-center">
         <div className="max-w-md w-full mx-auto">
           <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#0144D8] p-1.5 mb-6">
             <BrandLogo variant="symbol" className="w-full h-full" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-900">Sign in to Visibyl Ops</h2>
+          <h2 className="text-2xl font-bold text-slate-900">
+            {authMode === 'signin' ? 'Sign in to Visibyl Ops' : 'Create your staff account'}
+          </h2>
           <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-            Use your verified Google account to access your staff workspace, developer console, or private client onboarding portal.
+            {authMode === 'signin' ? 'Enter your company email and password to continue.' : 'Create an account using your email address and a secure password.'}
           </p>
 
-          {authError && (
-            <div className="mt-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">
-              {authError}
+          {(authError || authMessage) && (
+            <div className={`mt-5 p-3.5 rounded-xl border text-xs ${authMessage ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+              {authMessage || authError}
             </div>
           )}
 
-          <button
-            onClick={handleGoogleSignIn}
-            disabled={signingIn}
-            className="mt-7 w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-xl bg-[#0144D8] hover:bg-[#0133A6] disabled:opacity-60 text-white text-sm font-semibold transition-colors cursor-pointer"
-          >
-            <span>{signingIn ? 'Signing in...' : 'Continue with Google'}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-
-          <div className="mt-8 pt-6 border-t border-slate-200 space-y-3 text-xs text-slate-500">
-            <p className="font-semibold text-slate-700">Official Company Remittance Account</p>
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 font-mono-tabular text-slate-700 space-y-1">
-              <p>Account Name: Visibyl Technologies</p>
-              <p>Bank: Kuda Bank</p>
-              <p>Account Number: 3003411811</p>
+          <form onSubmit={handleEmailAuth} className="mt-6 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email address</label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input type="email" required autoComplete="email" value={email}
+                  onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com"
+                  className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0144D8]" />
+              </div>
             </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
+              <div className="relative">
+                <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input type="password" required minLength={6} autoComplete={authMode === 'signin' ? 'current-password' : 'new-password'}
+                  value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters"
+                  className="w-full rounded-xl border border-slate-300 pl-10 pr-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0144D8]" />
+              </div>
+            </div>
+            <button type="submit" disabled={signingIn}
+              className="w-full flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-[#0144D8] hover:bg-[#0133A6] disabled:opacity-60 text-white text-sm font-semibold transition-colors">
+              <span>{signingIn ? 'Please wait...' : authMode === 'signin' ? 'Sign In' : 'Create Account'}</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+
+          <div className="mt-5 text-center text-sm text-slate-600">
+            {authMode === 'signin' ? "Don't have an account?" : 'Already have an account?'}
+            <button type="button" onClick={() => { setAuthMode(authMode === 'signin' ? 'signup' : 'signin'); setAuthMessage(null); }}
+              className="ml-1.5 font-semibold text-[#0144D8] hover:underline">
+              {authMode === 'signin' ? 'Create account' : 'Sign in'}
+            </button>
           </div>
+          <div className="mt-6 flex justify-center"><PWAInstallButton compact /></div>
         </div>
       </div>
     </div>
