@@ -88,15 +88,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     const confirmedPaymentsAll = payments.filter((p) => p.verificationStatus === 'confirmed');
     const pendingPayments = payments.filter((p) => p.verificationStatus === 'pending');
 
-    const totalConfirmedRevenue = confirmedPaymentsAll.reduce((sum, p) => sum + p.amount, 0);
-    const periodRevenue = confirmedPaymentsAll
-      .filter((p) => isWithinTimeframe(p.paymentDate || p.createdAt, timeframe))
-      .reduce((sum, p) => sum + p.amount, 0);
+    // Reconcile customer-level amounts paid with confirmed payment transactions.
+    // Use the greater value per customer so the same receipt is never counted twice.
+    const confirmedByCustomer = new Map<string, number>();
+    confirmedPaymentsAll.forEach((payment) => {
+      confirmedByCustomer.set(
+        payment.customerId,
+        (confirmedByCustomer.get(payment.customerId) || 0) + Number(payment.amount || 0)
+      );
+    });
 
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalConfirmedRevenue = customers.reduce((sum, customer) => {
+      const ledgerTotal = confirmedByCustomer.get(customer.id) || 0;
+      const customerPaid = Number(customer.amountPaid || 0);
+      return sum + Math.max(ledgerTotal, customerPaid);
+    }, 0);
+
+    const periodPayments = confirmedPaymentsAll
+      .filter((p) => isWithinTimeframe(p.paymentDate || p.createdAt, timeframe));
+    const periodPaymentByCustomer = new Map<string, number>();
+    periodPayments.forEach((payment) => {
+      periodPaymentByCustomer.set(
+        payment.customerId,
+        (periodPaymentByCustomer.get(payment.customerId) || 0) + Number(payment.amount || 0)
+      );
+    });
+    const periodRevenue = customers.reduce((sum, customer) => {
+      const periodLedgerTotal = periodPaymentByCustomer.get(customer.id) || 0;
+      const allLedgerTotal = confirmedByCustomer.get(customer.id) || 0;
+      const unrecordedCustomerPaid = Math.max(0, Number(customer.amountPaid || 0) - allLedgerTotal);
+      const customerPaidUpdatedInPeriod = unrecordedCustomerPaid > 0 &&
+        isWithinTimeframe(customer.updatedAt || customer.createdAt, timeframe)
+        ? unrecordedCustomerPaid
+        : 0;
+      return sum + periodLedgerTotal + customerPaidUpdatedInPeriod;
+    }, 0);
+
+    const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0);
     const periodExpenses = expenses
       .filter((e) => isWithinTimeframe(e.expenseDate || e.createdAt, timeframe))
-      .reduce((sum, e) => sum + e.amount, 0);
+      .reduce((sum, e) => sum + Number(e.amount || 0), 0);
 
     let totalOutstanding = 0;
     projectFinancials.forEach((fin) => {
