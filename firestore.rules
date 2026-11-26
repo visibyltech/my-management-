@@ -201,7 +201,8 @@ service cloud.firestore {
         ]) &&
         data.keys().hasOnly([
           'id', 'customerCode', 'accountNumber', 'fullName', 'businessName', 'phone',
-          'email', 'businessAddress', 'businessCategory', 'registrationDate',
+          'email', 'businessAddress', 'businessCategory', 'websiteUrl', 'websiteType',
+          'agreedProjectAmount', 'amountPaid', 'outstandingBalance', 'registrationDate',
           'salesRepUid', 'salesRepName', 'notes', 'customerUid',
           'createdByUid', 'createdAt', 'updatedAt'
         ]) &&
@@ -214,6 +215,11 @@ service cloud.firestore {
         data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
         data.businessAddress is string && data.businessAddress.size() <= 300 &&
         (!('businessCategory' in data) || (data.businessCategory is string && data.businessCategory.size() <= 100)) &&
+        (!('websiteUrl' in data) || (data.websiteUrl is string && data.websiteUrl.size() <= 500)) &&
+        (!('websiteType' in data) || data.websiteType in ['', 'static', 'automated']) &&
+        (!('agreedProjectAmount' in data) || (data.agreedProjectAmount is number && data.agreedProjectAmount >= 0)) &&
+        (!('amountPaid' in data) || (data.amountPaid is number && data.amountPaid >= 0)) &&
+        (!('outstandingBalance' in data) || (data.outstandingBalance is number && data.outstandingBalance >= 0)) &&
         data.registrationDate is string && data.registrationDate.size() <= 40 &&
         data.salesRepUid is string && data.salesRepUid.size() <= 128 &&
         data.salesRepName is string && data.salesRepName.size() <= 120 &&
