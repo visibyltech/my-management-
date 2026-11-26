@@ -53,13 +53,43 @@ const AppContent: React.FC = () => {
     extractOnboardingIdFromLocation()
   );
 
+  // Keep Android/browser Back navigation inside the app instead of leaving the site.
   useEffect(() => {
-    const handlePopState = () => {
-      setOnboardingFormId(extractOnboardingIdFromLocation());
+    window.history.replaceState(
+      { ...(window.history.state || {}), visibylApp: true, section: activeSection },
+      '',
+      window.location.href
+    );
+    window.history.pushState(
+      { visibylApp: true, section: activeSection },
+      '',
+      window.location.href
+    );
+
+    const handlePopState = (event: PopStateEvent) => {
+      const state = event.state as { visibylApp?: boolean; section?: NavSection } | null;
+      const formId = extractOnboardingIdFromLocation();
+      setOnboardingFormId(formId);
+      if (formId) return;
+
+      if (state?.visibylApp && state.section && canAccessSection(state.section)) {
+        setActiveSection(state.section);
+        setSelectedEntityId(null);
+        return;
+      }
+
+      window.history.pushState(
+        { visibylApp: true, section: 'dashboard' },
+        '',
+        window.location.href
+      );
+      setActiveSection('dashboard');
+      setSelectedEntityId(null);
     };
+
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [activeSection, canAccessSection]);
 
   const openOnboardingForm = useCallback((formId: string) => {
     const url = new URL(window.location.href);
@@ -106,8 +136,14 @@ const AppContent: React.FC = () => {
 
   const handleSelectSection = useCallback(
     (section: NavSection) => {
+      const target = canAccessSection(section) ? section : 'dashboard';
+      window.history.pushState(
+        { visibylApp: true, section: target },
+        '',
+        window.location.href
+      );
       setSelectedEntityId(null);
-      setActiveSection(canAccessSection(section) ? section : 'dashboard');
+      setActiveSection(target);
     },
     [canAccessSection]
   );
@@ -115,6 +151,11 @@ const AppContent: React.FC = () => {
   const handleQuickJump = useCallback(
     (section: NavSection, entityId?: string) => {
       const target = canAccessSection(section) ? section : 'dashboard';
+      window.history.pushState(
+        { visibylApp: true, section: target, entityId: entityId || null },
+        '',
+        window.location.href
+      );
       setActiveSection(target);
       setSelectedEntityId(entityId || null);
       setJumpVersion((v) => v + 1);
