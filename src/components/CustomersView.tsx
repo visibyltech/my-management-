@@ -50,7 +50,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quickMsg, setQuickMsg] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ fullName: '', businessName: '', phone: '', email: '', businessAddress: '', businessCategory: '', websiteUrl: '', otherService: '', websiteType: '' as '' | 'static' | 'automated' | 'school_management' | 'business_management' | 'cac_registration' | 'social_media_management' | 'social_media_boost' | 'other', agreedProjectAmount: '', amountPaid: '', notes: '' });
+  const [editForm, setEditForm] = useState({ fullName: '', businessName: '', phone: '', email: '', businessAddress: '', businessCategory: '', websiteUrl: '', otherService: '', dealClosedDate: '', domainPurchaseDate: '', websiteType: '' as '' | 'static' | 'automated' | 'school_management' | 'business_management' | 'cac_registration' | 'social_media_management' | 'social_media_boost' | 'other', agreedProjectAmount: '', amountPaid: '', notes: '' });
 
   const [form, setForm] = useState({
     fullName: '',
@@ -102,6 +102,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         websiteUrl: form.websiteUrl,
         websiteType: form.websiteType,
         otherService: form.otherService,
+        dealClosedDate: form.dealClosedDate,
+        domainPurchaseDate: form.domainPurchaseDate,
         agreedProjectAmount: Number(form.agreedProjectAmount || 0),
         amountPaid: Number(form.amountPaid || 0),
         salesRepUid: form.salesRepUid || firebaseUser?.uid,
@@ -120,6 +122,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         websiteUrl: '',
         websiteType: '',
         otherService: '',
+        dealClosedDate: '',
+        domainPurchaseDate: '',
         agreedProjectAmount: '',
         amountPaid: '',
         salesRepUid: firebaseUser?.uid || '',
@@ -143,6 +147,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       websiteUrl: customer.websiteUrl || '',
       websiteType: customer.websiteType || '',
       otherService: customer.otherService || '',
+      dealClosedDate: customer.dealClosedDate || '',
+      domainPurchaseDate: customer.domainPurchaseDate || '',
       agreedProjectAmount: String(customer.agreedProjectAmount ?? 0),
       amountPaid: String(customer.amountPaid ?? 0),
       notes: customer.notes || '',
@@ -498,6 +504,8 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                   {editForm.websiteType === 'other' && <div><label className="block text-xs font-semibold text-slate-700 mb-1">Other Business / Service</label><input required value={editForm.otherService} onChange={(e) => setEditForm({ ...editForm, otherService: e.target.value })} placeholder="Enter the service provided" className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>}
                 </div>
               </div>
+              <div className="border-t border-slate-200 pt-3"><h4 className="text-xs font-bold text-slate-800 mb-3">Important Dates</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1">Date Deal Was Closed</label><input type="date" value={editForm.dealClosedDate} onChange={(e) => setEditForm({ ...editForm, dealClosedDate: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div><div><label className="block text-xs font-semibold text-slate-700 mb-1">Date Domain Was Bought</label><input type="date" value={editForm.domainPurchaseDate} onChange={(e) => setEditForm({ ...editForm, domainPurchaseDate: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div></div></div>
+              <div className="border-t border-slate-200 pt-3"><h4 className="text-xs font-bold text-slate-800 mb-3">Important Dates</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="block text-xs font-semibold text-slate-700 mb-1">Date Deal Was Closed</label><input type="date" value={form.dealClosedDate} onChange={(e) => setForm({ ...form, dealClosedDate: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div><div><label className="block text-xs font-semibold text-slate-700 mb-1">Date Domain Was Bought</label><input type="date" value={form.domainPurchaseDate} onChange={(e) => setForm({ ...form, domainPurchaseDate: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div></div></div>
               <div className="border-t border-slate-200 pt-3">
                 <h4 className="text-xs font-bold text-slate-800 mb-3">Customer Project Financials (₦)</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
