@@ -50,7 +50,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quickMsg, setQuickMsg] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ fullName: '', businessName: '', phone: '', email: '', businessAddress: '', businessCategory: '', notes: '' });
+  const [editForm, setEditForm] = useState({ fullName: '', businessName: '', phone: '', email: '', businessAddress: '', businessCategory: '', websiteUrl: '', websiteType: '' as '' | 'static' | 'automated', agreedProjectAmount: '', amountPaid: '', notes: '' });
 
   const [form, setForm] = useState({
     fullName: '',
@@ -59,6 +59,10 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     email: '',
     businessAddress: '',
     businessCategory: '',
+    websiteUrl: '',
+    websiteType: '' as '' | 'static' | 'automated',
+    agreedProjectAmount: '',
+    amountPaid: '',
     salesRepUid: firebaseUser?.uid || '',
     notes: '',
   });
@@ -95,6 +99,10 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         email: form.email,
         businessAddress: form.businessAddress,
         businessCategory: form.businessCategory,
+        websiteUrl: form.websiteUrl,
+        websiteType: form.websiteType,
+        agreedProjectAmount: Number(form.agreedProjectAmount || 0),
+        amountPaid: Number(form.amountPaid || 0),
         salesRepUid: form.salesRepUid || firebaseUser?.uid,
         salesRepName: assignedRep?.fullName || staffProfile?.fullName || 'VISIBYL Rep',
         notes: form.notes,
@@ -108,6 +116,10 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         email: '',
         businessAddress: '',
         businessCategory: '',
+        websiteUrl: '',
+        websiteType: '',
+        agreedProjectAmount: '',
+        amountPaid: '',
         salesRepUid: firebaseUser?.uid || '',
         notes: '',
       });
@@ -126,6 +138,10 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       email: customer.email || '',
       businessAddress: customer.businessAddress || '',
       businessCategory: customer.businessCategory || '',
+      websiteUrl: customer.websiteUrl || '',
+      websiteType: customer.websiteType || '',
+      agreedProjectAmount: String(customer.agreedProjectAmount ?? 0),
+      amountPaid: String(customer.amountPaid ?? 0),
       notes: customer.notes || '',
     });
     setEditingCustomer(customer);
@@ -138,7 +154,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     setSaving(true);
     setError(null);
     try {
-      await updateCustomer(editingCustomer.id, editForm);
+      await updateCustomer(editingCustomer.id, { ...editForm, agreedProjectAmount: Number(editForm.agreedProjectAmount || 0), amountPaid: Number(editForm.amountPaid || 0) });
       setSelectedCustomer({ ...editingCustomer, ...editForm });
       setEditingCustomer(null);
       setQuickMsg('Customer details updated successfully.');
@@ -172,13 +188,12 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     ? onboardingForms.filter((f) => f.customerId === selectedCustomer.id)
     : [];
 
-  const customerTotalPaid = customerPayments
-    .filter((p) => p.verificationStatus === 'confirmed')
-    .reduce((s, p) => s + p.amount, 0);
-  const customerBalance = customerProjects.reduce(
-    (s, p) => s + (projectFinancials.get(p.id)?.outstandingBalance || 0),
-    0
-  );
+  const customerTotalPaid = customerProjects.length > 0
+    ? customerPayments.filter((p) => p.verificationStatus === 'confirmed').reduce((s, p) => s + p.amount, 0)
+    : Number(selectedCustomer?.amountPaid || 0);
+  const customerBalance = customerProjects.length > 0
+    ? customerProjects.reduce((s, p) => s + (projectFinancials.get(p.id)?.outstandingBalance || 0), 0)
+    : Number(selectedCustomer?.outstandingBalance || 0);
 
   return (
     <div className="space-y-6">
@@ -215,9 +230,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Customer Directory Table/List */}
-        <div className={`${selectedCustomer ? 'lg:col-span-5' : 'lg:col-span-12'} bg-white border border-slate-200 rounded-xl overflow-hidden`}>
+        {!selectedCustomer && <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between">
             <span className="text-xs font-bold text-slate-700">
               {filteredCustomers.length} Registered Customer{filteredCustomers.length === 1 ? '' : 's'}
@@ -264,12 +279,13 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
               })}
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Customer 360 Profile */}
         {selectedCustomer && (
-          <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-6 space-y-6">
-            <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-200">
+          <div className="w-full bg-white border border-slate-200 rounded-xl p-6 space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200">
+              <button onClick={() => setSelectedCustomer(null)} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">← Back to Customers</button>
               <div>
                 <p className="text-xs font-mono-tabular font-semibold text-[#0144D8]">
                   {selectedCustomer.customerCode} · Account #{selectedCustomer.accountNumber}
@@ -280,12 +296,6 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">{selectedCustomer.businessAddress}</p>
               </div>
-              <button
-                onClick={() => setSelectedCustomer(null)}
-                className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-              >
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
             {quickMsg && (
@@ -477,6 +487,21 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                   <input required={['fullName', 'businessName', 'phone', 'email', 'businessAddress'].includes(key)} type={key === 'email' ? 'email' : 'text'} value={editForm[key]} onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
                 </div>
               ))}
+              <div className="border-t border-slate-200 pt-3">
+                <h4 className="text-xs font-bold text-slate-800 mb-3">Website Details</h4>
+                <div className="space-y-3">
+                  <div><label className="block text-xs font-semibold text-slate-700 mb-1">Website URL</label><input type="url" placeholder="https://example.com" value={editForm.websiteUrl} onChange={(e) => setEditForm({ ...editForm, websiteUrl: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs font-semibold text-slate-700 mb-1">Website Type</label><select value={editForm.websiteType} onChange={(e) => setEditForm({ ...editForm, websiteType: e.target.value as '' | 'static' | 'automated' })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"><option value="">Not specified</option><option value="static">Static Website</option><option value="automated">Fully Automated Website</option></select></div>
+                </div>
+              </div>
+              <div className="border-t border-slate-200 pt-3">
+                <h4 className="text-xs font-bold text-slate-800 mb-3">Customer Project Financials (₦)</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div><label className="block text-xs font-semibold text-slate-700 mb-1">Agreed Project Amount</label><input type="number" min="0" value={editForm.agreedProjectAmount} onChange={(e) => setEditForm({ ...editForm, agreedProjectAmount: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs font-semibold text-slate-700 mb-1">Amount Already Paid</label><input type="number" min="0" value={editForm.amountPaid} onChange={(e) => setEditForm({ ...editForm, amountPaid: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs font-semibold text-slate-700 mb-1">Outstanding Balance (calculated)</label><input readOnly value={Math.max(0, Number(editForm.agreedProjectAmount || 0) - Number(editForm.amountPaid || 0))} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600" /></div>
+                </div>
+              </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Notes</label>
                 <textarea rows={3} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
@@ -579,6 +604,21 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                   onChange={(e) => setForm({ ...form, businessAddress: e.target.value })}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 />
+              </div>
+              <div className="border-t border-slate-200 pt-3">
+                <h4 className="text-xs font-bold text-slate-800 mb-3">Website Details</h4>
+                <div className="space-y-3">
+                  <div><label className="block text-xs font-semibold text-slate-700 mb-1">Website URL</label><input type="url" placeholder="https://example.com" value={form.websiteUrl} onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs font-semibold text-slate-700 mb-1">Website Type</label><select value={form.websiteType} onChange={(e) => setForm({ ...form, websiteType: e.target.value as '' | 'static' | 'automated' })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"><option value="">Not specified</option><option value="static">Static Website</option><option value="automated">Fully Automated Website</option></select></div>
+                </div>
+              </div>
+              <div className="border-t border-slate-200 pt-3">
+                <h4 className="text-xs font-bold text-slate-800 mb-3">Customer Project Financials (₦)</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div><label className="block text-xs font-semibold text-slate-700 mb-1">Agreed Project Amount</label><input type="number" min="0" value={form.agreedProjectAmount} onChange={(e) => setForm({ ...form, agreedProjectAmount: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
+                  <div><label className="block text-xs font-semibold text-slate-700 mb-1">Amount Already Paid</label><input type="number" min="0" value={form.amountPaid} onChange={(e) => setForm({ ...form, amountPaid: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
+                  <p className="sm:col-span-2 text-xs text-slate-500">Outstanding balance is calculated automatically when you save.</p>
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Notes</label>
