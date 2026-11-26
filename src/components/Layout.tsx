@@ -416,9 +416,6 @@ export const Layout: React.FC<LayoutProps> = ({
               )}
             </div>
           </div>
-          <div className="shrink-0">
-            <PWAInstallButton compact />
-          </div>
         </header>
 
         {/* Mobile Search Bar below header on xs */}
