@@ -1398,6 +1398,14 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!existing) throw new Error('Staff record not found.');
     const now = new Date().toISOString();
     const updated: StaffMember = { ...existing, ...updates, updatedAt: now };
+    // A blank commission override means remove the override and use the company default.
+    // Do not persist an explicit undefined value: Firestore rejects it.
+    if (
+      Object.prototype.hasOwnProperty.call(updates, 'commissionRateOverride') &&
+      updates.commissionRateOverride === undefined
+    ) {
+      delete updated.commissionRateOverride;
+    }
     const updatedPublic: StaffPublic = {
       uid: updated.uid,
       staffCode: updated.staffCode,
