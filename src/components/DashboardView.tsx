@@ -27,7 +27,7 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
-  const { firebaseUser, staffProfile, isAdmin, isFinance, isSales, isDeveloper } = useAuth();
+  const { firebaseUser, staffProfile, isAdmin, isFinance, isSales, isDeveloper, isSuperAdmin } = useAuth();
   const {
     customers,
     projects,
@@ -602,7 +602,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           <p className="text-xs text-slate-500">Total Customers</p>
           <p className="text-xl font-bold font-mono-tabular text-slate-900 mt-1">{metrics.totalCustomers}</p>
         </button>
-        {(isAdmin || isFinance) && (
+        {isSuperAdmin && (
           <button
             onClick={() => onNavigate('staff')}
             className="text-left bg-white border border-slate-200 rounded-xl px-5 py-4 hover:border-[#0144D8] transition-colors"
