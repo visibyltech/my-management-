@@ -279,7 +279,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           <div className="grid grid-cols-3 gap-4 mt-6 pt-5 border-t border-slate-100">
             <div>
               <p className="text-xs text-slate-500">Assigned Active</p>
-              <p className="text-2xl font-bold font-mono-tabular text-slate-900 mt-1">{activeDev}</p>
+              <p className="text-xl sm:text-2xl font-bold tracking-tight font-mono-tabular text-slate-900 mt-1">{activeDev}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500">Under Review</p>
@@ -536,9 +536,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       {/* Header Row & Timeframe Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">
-            {isAdmin || isFinance ? 'Executive Operations & Financial Overview' : 'Sales & Client Performance'}
+          <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-[#0144D8] mb-1">VISIBYL TECHNOLOGIES · OPERATIONS</p>
+          <h2 className="text-xl font-bold tracking-tight text-slate-950">
+            {isAdmin || isFinance ? 'Executive Overview' : 'Performance Overview'}
           </h2>
+          <p className="text-xs text-slate-500 mt-1">A clear view of business performance, cash flow and delivery.</p>
         </div>
         <div className="inline-flex items-center gap-1 p-1 bg-slate-200/70 rounded-lg self-start">
           {(['daily', 'weekly', 'monthly', 'yearly', 'all'] as TimeframeFilter[]).map((tf) => (
@@ -556,8 +558,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       </div>
 
       {/* Primary KPI Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
           <p className="text-xs font-medium text-slate-500">Confirmed Revenue ({timeframe === 'all' ? 'Total' : timeframe})</p>
           <p className="text-2xl font-bold font-mono-tabular text-[#0144D8] mt-1.5">
             {formatNaira(metrics.periodRevenue)}
@@ -591,7 +593,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             <div className="bg-white border border-slate-200 rounded-xl p-5">
               <p className="text-xs font-medium text-slate-500">Net Income ({timeframe === 'all' ? 'Total' : timeframe})</p>
               <p
-                className={`text-2xl font-bold font-mono-tabular mt-1.5 ${
+                className={`text-xl sm:text-2xl font-bold tracking-tight font-mono-tabular mt-1.5 ${
                   metrics.periodNetIncome >= 0 ? 'text-emerald-700' : 'text-red-700'
                 }`}
               >
@@ -625,10 +627,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       </div>
 
       {/* Operational Counts Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         <button
           onClick={() => onNavigate('customers')}
-          className="text-left bg-white border border-slate-200 rounded-xl px-5 py-4 hover:border-[#0144D8] transition-colors"
+          className="text-left bg-white border border-slate-200 rounded-xl px-4 py-3.5 hover:border-[#0144D8] hover:shadow-sm transition-all"
         >
           <p className="text-xs text-slate-500">Total Customers</p>
           <p className="text-xl font-bold font-mono-tabular text-slate-900 mt-1">{metrics.totalCustomers}</p>
