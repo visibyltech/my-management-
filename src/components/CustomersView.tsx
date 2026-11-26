@@ -306,7 +306,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                 </p>
                 <h3 className="text-xl font-bold text-slate-900 mt-1">{selectedCustomer.businessName}</h3>
                 <p className="text-xs text-slate-600 mt-1">
-                  {selectedCustomer.fullName} · {selectedCustomer.phone} · {selectedCustomer.email}
+                  {selectedCustomer.fullName} · {selectedCustomer.phone ? <a href={`https://wa.me/${selectedCustomer.phone.replace(/\D/g, '').replace(/^0/, '234')}`} target="_blank" rel="noreferrer" className="text-emerald-700 underline">{selectedCustomer.phone}</a> : 'No phone'} · {selectedCustomer.email}
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">{selectedCustomer.businessAddress}</p>
               </div>
