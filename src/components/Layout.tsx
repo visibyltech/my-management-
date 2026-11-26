@@ -93,21 +93,25 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // Universal Search across Customers, Employees, Projects, Invoices, Payments
   const searchResults = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (q.length < 2) return null;
+    const rawQuery = searchQuery.trim();
+    if (rawQuery.length < 2) return null;
+    const q = rawQuery.toLocaleLowerCase();
+    const digitsQuery = rawQuery.replace(/\\D/g, '');
 
     const matchedCustomers = isDeveloper
       ? []
       : customers
-          .filter(
-            (c) =>
-              c.fullName.toLowerCase().includes(q) ||
-              c.businessName.toLowerCase().includes(q) ||
-              c.customerCode.toLowerCase().includes(q) ||
-              c.accountNumber.toLowerCase().includes(q) ||
-              c.email.toLowerCase().includes(q) ||
-              c.phone.toLowerCase().includes(q)
-          )
+          .filter((c) => {
+            const textFields = [c.fullName, c.businessName, c.customerCode, c.accountNumber, c.email, c.phone];
+            const textMatch = textFields.some((value) =>
+              String(value ?? '').toLocaleLowerCase().includes(q)
+            );
+            const accountDigits = String(c.accountNumber ?? '').replace(/\\D/g, '');
+            const codeDigits = String(c.customerCode ?? '').replace(/\\D/g, '');
+            const numericMatch = digitsQuery.length >= 2 &&
+              (accountDigits.includes(digitsQuery) || codeDigits.includes(digitsQuery));
+            return textMatch || numericMatch;
+          })
           .slice(0, 5);
 
     const matchedProjects = projects
