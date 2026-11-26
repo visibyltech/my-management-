@@ -71,17 +71,16 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   const filteredCustomers = useMemo(() => {
     const rawQuery = search.trim();
     if (!rawQuery) return customers;
-    const q = rawQuery.toLowerCase();
-    const digitsQuery = rawQuery.replace(/\D/g, '');
+    const q = rawQuery.toLocaleLowerCase();
+    const digitsQuery = rawQuery.replace(/\\D/g, '');
     return customers.filter((c) => {
-      const values = [
-        c.fullName, c.businessName, c.phone, c.email, c.customerCode,
-        String(c.accountNumber ?? ''),
-      ];
-      const textMatch = values.some((value) => String(value ?? '').toLowerCase().includes(q));
-      const accountDigits = String(c.accountNumber ?? '').replace(/\D/g, '');
-      const codeDigits = String(c.customerCode ?? '').replace(/\D/g, '');
-      const numericMatch = digitsQuery.length > 0 &&
+      const values = [c.fullName, c.businessName, c.phone, c.email, c.customerCode, c.accountNumber];
+      const textMatch = values.some((value) =>
+        String(value ?? '').toLocaleLowerCase().includes(q)
+      );
+      const accountDigits = String(c.accountNumber ?? '').replace(/\\D/g, '');
+      const codeDigits = String(c.customerCode ?? '').replace(/\\D/g, '');
+      const numericMatch = digitsQuery.length >= 2 &&
         (accountDigits.includes(digitsQuery) || codeDigits.includes(digitsQuery));
       return textMatch || numericMatch;
     });
