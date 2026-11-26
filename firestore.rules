@@ -216,7 +216,7 @@ service cloud.firestore {
         data.businessAddress is string && data.businessAddress.size() <= 300 &&
         (!('businessCategory' in data) || (data.businessCategory is string && data.businessCategory.size() <= 100)) &&
         (!('websiteUrl' in data) || (data.websiteUrl is string && data.websiteUrl.size() <= 500)) &&
-        (!('websiteType' in data) || data.websiteType in ['', 'static', 'automated']) &&
+        (!('websiteType' in data) || data.websiteType in ['', 'static', 'automated', 'school_management', 'business_management']) &&
         (!('agreedProjectAmount' in data) || (data.agreedProjectAmount is number && data.agreedProjectAmount >= 0)) &&
         (!('amountPaid' in data) || (data.amountPaid is number && data.amountPaid >= 0)) &&
         (!('outstandingBalance' in data) || (data.outstandingBalance is number && data.outstandingBalance >= 0)) &&
