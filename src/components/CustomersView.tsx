@@ -313,6 +313,21 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
               </div>
             )}
 
+            {/* Complete customer information */}
+            <section className="rounded-xl border border-slate-200 p-4 space-y-4">
+              <h4 className="text-sm font-bold text-slate-900">Customer & Service Details</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div><p className="text-xs text-slate-500 mb-1">Customer WhatsApp</p>{selectedCustomer.phone ? <a href={`https://wa.me/${selectedCustomer.phone.replace(/\\D/g, '').replace(/^0/, '234')}`} target="_blank" rel="noreferrer" className="font-semibold text-emerald-700 underline">{selectedCustomer.phone} · Open WhatsApp chat</a> : <p className="text-slate-500">No phone number recorded</p>}</div>
+                <div><p className="text-xs text-slate-500 mb-1">Customer Email</p>{selectedCustomer.email ? <a href={`mailto:${selectedCustomer.email}`} className="font-semibold text-blue-700 underline break-all">{selectedCustomer.email}</a> : <p className="text-slate-500">Not recorded</p>}</div>
+                <div><p className="text-xs text-slate-500 mb-1">Service Type</p><p className="font-semibold text-slate-800">{({ static: 'Static Website', automated: 'Fully Automated Website', school_management: 'School Management System', business_management: 'Business Management System', cac_registration: 'CAC Registration', social_media_management: 'Social Media Accounts Management', social_media_boost: 'Social Media Account Boost', other: 'Other' } as Record<string, string>)[selectedCustomer.websiteType || ''] || 'Not specified'}</p>{selectedCustomer.websiteType === 'other' && <p className="text-slate-700 mt-1">{selectedCustomer.otherService || 'Service description not added'}</p>}</div>
+                <div><p className="text-xs text-slate-500 mb-1">Customer Website URL</p>{selectedCustomer.websiteUrl ? <a href={selectedCustomer.websiteUrl.match(/^https?:\\/\\//i) ? selectedCustomer.websiteUrl : `https://${selectedCustomer.websiteUrl}`} target="_blank" rel="noreferrer" className="font-semibold text-blue-700 underline break-all">{selectedCustomer.websiteUrl}</a> : <p className="text-slate-500">No website URL has been added. Use Edit Customer to enter it.</p>}</div>
+                <div><p className="text-xs text-slate-500 mb-1">Date Deal Was Closed</p><p className="font-semibold text-slate-800">{selectedCustomer.dealClosedDate || 'Not recorded'}</p></div>
+                <div><p className="text-xs text-slate-500 mb-1">Date Domain Was Bought</p><p className="font-semibold text-slate-800">{selectedCustomer.domainPurchaseDate || 'Not recorded'}</p></div>
+                <div><p className="text-xs text-slate-500 mb-1">Agreed Project Amount</p><p className="font-semibold text-slate-800">{formatNaira(Number(selectedCustomer.agreedProjectAmount || 0))}</p></div>
+                <div><p className="text-xs text-slate-500 mb-1">Amount Paid (Customer Record)</p><p className="font-semibold text-emerald-700">{formatNaira(Number(selectedCustomer.amountPaid || 0))}</p></div>
+              </div>
+            </section>
+
             {/* Quick Financial Summary */}
             <div className="grid grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-xl p-4">
               <div>
