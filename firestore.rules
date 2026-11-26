@@ -202,7 +202,7 @@ service cloud.firestore {
         data.keys().hasOnly([
           'id', 'customerCode', 'accountNumber', 'fullName', 'businessName', 'phone',
           'email', 'businessAddress', 'businessCategory', 'websiteUrl', 'websiteType',
-          'agreedProjectAmount', 'amountPaid', 'outstandingBalance', 'registrationDate',
+          'agreedProjectAmount', 'amountPaid', 'outstandingBalance', 'otherService', 'registrationDate',
           'salesRepUid', 'salesRepName', 'notes', 'customerUid',
           'createdByUid', 'createdAt', 'updatedAt'
         ]) &&
@@ -216,7 +216,8 @@ service cloud.firestore {
         data.businessAddress is string && data.businessAddress.size() <= 300 &&
         (!('businessCategory' in data) || (data.businessCategory is string && data.businessCategory.size() <= 100)) &&
         (!('websiteUrl' in data) || (data.websiteUrl is string && data.websiteUrl.size() <= 500)) &&
-        (!('websiteType' in data) || data.websiteType in ['', 'static', 'automated', 'school_management', 'business_management']) &&
+        (!('otherService' in data) || (data.otherService is string && data.otherService.size() <= 160)) &&
+        (!('websiteType' in data) || data.websiteType in ['', 'static', 'automated', 'school_management', 'business_management', 'cac_registration', 'social_media_management', 'social_media_boost', 'other']) &&
         (!('agreedProjectAmount' in data) || (data.agreedProjectAmount is number && data.agreedProjectAmount >= 0)) &&
         (!('amountPaid' in data) || (data.amountPaid is number && data.amountPaid >= 0)) &&
         (!('outstandingBalance' in data) || (data.outstandingBalance is number && data.outstandingBalance >= 0)) &&
