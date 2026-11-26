@@ -50,7 +50,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quickMsg, setQuickMsg] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState({ fullName: '', businessName: '', phone: '', email: '', businessAddress: '', businessCategory: '', websiteUrl: '', websiteType: '' as '' | 'static' | 'automated', agreedProjectAmount: '', amountPaid: '', notes: '' });
+  const [editForm, setEditForm] = useState({ fullName: '', businessName: '', phone: '', email: '', businessAddress: '', businessCategory: '', websiteUrl: '', websiteType: '' as '' | 'static' | 'automated' | 'school_management' | 'business_management', agreedProjectAmount: '', amountPaid: '', notes: '' });
 
   const [form, setForm] = useState({
     fullName: '',
@@ -60,7 +60,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     businessAddress: '',
     businessCategory: '',
     websiteUrl: '',
-    websiteType: '' as '' | 'static' | 'automated',
+    websiteType: '' as '' | 'static' | 'automated' | 'school_management' | 'business_management',
     agreedProjectAmount: '',
     amountPaid: '',
     salesRepUid: firebaseUser?.uid || '',
@@ -491,7 +491,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                 <h4 className="text-xs font-bold text-slate-800 mb-3">Website Details</h4>
                 <div className="space-y-3">
                   <div><label className="block text-xs font-semibold text-slate-700 mb-1">Website URL</label><input type="url" placeholder="https://example.com" value={editForm.websiteUrl} onChange={(e) => setEditForm({ ...editForm, websiteUrl: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1">Website Type</label><select value={editForm.websiteType} onChange={(e) => setEditForm({ ...editForm, websiteType: e.target.value as '' | 'static' | 'automated' })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"><option value="">Not specified</option><option value="static">Static Website</option><option value="automated">Fully Automated Website</option></select></div>
+                  <div><label className="block text-xs font-semibold text-slate-700 mb-1">Website Type</label><select value={editForm.websiteType} onChange={(e) => setEditForm({ ...editForm, websiteType: e.target.value as '' | 'static' | 'automated' | 'school_management' | 'business_management' })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"><option value="">Not specified</option><option value="static">Static Website</option><option value="automated">Fully Automated Website</option><option value="school_management">School Management System</option><option value="business_management">Business Management System</option></select></div>
                 </div>
               </div>
               <div className="border-t border-slate-200 pt-3">
@@ -609,7 +609,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                 <h4 className="text-xs font-bold text-slate-800 mb-3">Website Details</h4>
                 <div className="space-y-3">
                   <div><label className="block text-xs font-semibold text-slate-700 mb-1">Website URL</label><input type="url" placeholder="https://example.com" value={form.websiteUrl} onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" /></div>
-                  <div><label className="block text-xs font-semibold text-slate-700 mb-1">Website Type</label><select value={form.websiteType} onChange={(e) => setForm({ ...form, websiteType: e.target.value as '' | 'static' | 'automated' })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"><option value="">Not specified</option><option value="static">Static Website</option><option value="automated">Fully Automated Website</option></select></div>
+                  <div><label className="block text-xs font-semibold text-slate-700 mb-1">Website Type</label><select value={form.websiteType} onChange={(e) => setForm({ ...form, websiteType: e.target.value as '' | 'static' | 'automated' | 'school_management' | 'business_management' })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"><option value="">Not specified</option><option value="static">Static Website</option><option value="automated">Fully Automated Website</option></select></div>
                 </div>
               </div>
               <div className="border-t border-slate-200 pt-3">
