@@ -114,10 +114,11 @@ export const StaffView: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900">Staff & Departments</h2>
+          <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-[#0144D8] mb-1">VISIBYL TECHNOLOGIES · PEOPLE</p>
+          <h2 className="text-xl font-bold tracking-tight text-slate-950">Team & Workforce</h2>
           <p className="text-sm text-slate-500 mt-0.5">
             Manage VISIBYL employees, departments, payout accounts, roles, and access approvals.
           </p>
@@ -138,6 +139,25 @@ export const StaffView: React.FC = () => {
           {statusMsg}
         </div>
       )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-[11px] font-medium text-slate-500">Total Team</p>
+          <p className="mt-1 text-2xl font-bold tracking-tight text-slate-950">{staffMembers.length}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-[11px] font-medium text-slate-500">Active Staff</p>
+          <p className="mt-1 text-2xl font-bold tracking-tight text-emerald-700">{staffMembers.filter((member) => member.employmentStatus === 'active').length}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-[11px] font-medium text-slate-500">Pending Access</p>
+          <p className="mt-1 text-2xl font-bold tracking-tight text-amber-700">{staffMembers.filter((member) => member.employmentStatus === 'pending').length + staffInvites.filter((invite) => invite.status === 'invited').length}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-[11px] font-medium text-slate-500">Departments</p>
+          <p className="mt-1 text-2xl font-bold tracking-tight text-[#0144D8]">{settings.departments.length}</p>
+        </div>
+      </div>
 
       {/* Department Filter Tabs */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
@@ -163,7 +183,7 @@ export const StaffView: React.FC = () => {
       </div>
 
       {/* Active & Pending Staff Table */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
