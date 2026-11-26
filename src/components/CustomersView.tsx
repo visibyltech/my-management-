@@ -5,6 +5,7 @@ import {
   FileCheck2,
   FileSpreadsheet,
   Plus,
+  Pencil,
   Search,
   UserPlus,
   X,
@@ -36,6 +37,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     staffPublic,
     settings,
     createCustomer,
+    updateCustomer,
     createOnboardingForm,
   } = useData();
 
@@ -44,9 +46,11 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
     initialSelectedId ? customers.find((c) => c.id === initialSelectedId) || null : null
   );
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quickMsg, setQuickMsg] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ fullName: '', businessName: '', phone: '', email: '', businessAddress: '', businessCategory: '', notes: '' });
 
   const [form, setForm] = useState({
     fullName: '',
@@ -109,6 +113,37 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to register customer.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEditCustomer = (customer: Customer) => {
+    setEditForm({
+      fullName: customer.fullName || '',
+      businessName: customer.businessName || '',
+      phone: customer.phone || '',
+      email: customer.email || '',
+      businessAddress: customer.businessAddress || '',
+      businessCategory: customer.businessCategory || '',
+      notes: customer.notes || '',
+    });
+    setEditingCustomer(customer);
+    setError(null);
+  };
+
+  const handleUpdateCustomer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCustomer) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await updateCustomer(editingCustomer.id, editForm);
+      setSelectedCustomer({ ...editingCustomer, ...editForm });
+      setEditingCustomer(null);
+      setQuickMsg('Customer details updated successfully.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to update customer.');
     } finally {
       setSaving(false);
     }
@@ -281,6 +316,12 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
               </div>
             </div>
 
+            <div className="flex justify-end">
+              <button onClick={() => openEditCustomer(selectedCustomer)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+                <Pencil className="w-3.5 h-3.5" /> Edit Customer
+              </button>
+            </div>
+
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-2.5">
               <button
@@ -417,6 +458,37 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
           </div>
         )}
       </div>
+
+      {editingCustomer && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <h3 className="text-base font-bold text-slate-900">Edit Customer Details</h3>
+              <button type="button" onClick={() => setEditingCustomer(null)} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100"><X className="w-4 h-4" /></button>
+            </div>
+            <form onSubmit={handleUpdateCustomer} className="mt-4 space-y-3">
+              {error && <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">{error}</div>}
+              {([
+                ['fullName', 'Full Name'], ['businessName', 'Business Name'], ['phone', 'Phone Number'],
+                ['email', 'Email Address'], ['businessCategory', 'Business Category'], ['businessAddress', 'Business Address'],
+              ] as const).map(([key, label]) => (
+                <div key={key}>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">{label}</label>
+                  <input required={['fullName', 'businessName', 'phone', 'email', 'businessAddress'].includes(key)} type={key === 'email' ? 'email' : 'text'} value={editForm[key]} onChange={(e) => setEditForm({ ...editForm, [key]: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                </div>
+              ))}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Notes</label>
+                <textarea rows={3} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button type="button" onClick={() => setEditingCustomer(null)} className="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold">Cancel</button>
+                <button type="submit" disabled={saving} className="px-5 py-2 rounded-lg bg-[#0144D8] text-white text-xs font-semibold">{saving ? 'Saving...' : 'Save Changes'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Register New Customer Modal */}
       {showAddModal && (
