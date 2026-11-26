@@ -102,6 +102,11 @@ export interface Customer {
   email: string;
   businessAddress: string;
   businessCategory?: string;
+  websiteUrl?: string;
+  websiteType?: 'static' | 'automated' | '';
+  agreedProjectAmount?: number;
+  amountPaid?: number;
+  outstandingBalance?: number;
   registrationDate: string;
   salesRepUid: string;
   salesRepName: string;
