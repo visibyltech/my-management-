@@ -3,6 +3,7 @@ export interface VisibylCapacitorConfig {
   appName: string;
   webDir: string;
   server: {
+    url?: string;
     androidScheme: string;
     iosScheme: string;
   };
@@ -21,6 +22,7 @@ const config: VisibylCapacitorConfig = {
   appName: 'Visibyl Ops',
   webDir: 'dist',
   server: {
+    url: 'https://my-management-iota.vercel.app',
     androidScheme: 'https',
     iosScheme: 'https',
   },
