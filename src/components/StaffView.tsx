@@ -103,6 +103,10 @@ export const StaffView: React.FC = () => {
       });
       setEditingStaff(null);
       setStatusMsg(`Updated staff profile for ${editingStaff.fullName}.`);
+    } catch (error) {
+      console.error('Unable to update staff profile:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setStatusMsg(`Staff changes were not saved: ${message.includes('permission-denied') ? 'Firestore denied this update. Please check the staff access rules.' : message.slice(0, 220)}`);
     } finally {
       setSaving(false);
     }
