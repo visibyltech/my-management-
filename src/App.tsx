@@ -4,6 +4,7 @@ import { DataProvider } from './context/DataContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { BrandLogo } from './components/BrandLogo';
 import { OfflineIndicator } from './components/PWAInstallButton';
+import { AutomaticInstallPrompt } from './components/AutomaticInstallPrompt';
 import { LoginScreen } from './components/LoginScreen';
 import { PublicOnboardingForm } from './components/PublicOnboardingForm';
 import { Layout } from './components/Layout';
@@ -200,6 +201,7 @@ const AppContent: React.FC = () => {
         {effectiveSection === 'settings' && <SettingsView />}
       </Layout>
       <OfflineIndicator />
+      <AutomaticInstallPrompt />
     </>
   );
 };
