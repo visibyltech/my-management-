@@ -508,9 +508,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           <h2 className="text-xl font-bold text-slate-900">
             {isAdmin || isFinance ? 'Executive Operations & Financial Overview' : 'Sales & Client Performance'}
           </h2>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Live figures computed strictly from verified database records in Nigerian Naira (₦).
-          </p>
         </div>
         <div className="inline-flex items-center gap-1 p-1 bg-slate-200/70 rounded-lg self-start">
           {(['daily', 'weekly', 'monthly', 'yearly', 'all'] as TimeframeFilter[]).map((tf) => (
@@ -605,13 +602,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           <p className="text-xs text-slate-500">Total Customers</p>
           <p className="text-xl font-bold font-mono-tabular text-slate-900 mt-1">{metrics.totalCustomers}</p>
         </button>
-        <button
-          onClick={() => onNavigate(isAdmin || isFinance ? 'staff' : 'projects')}
-          className="text-left bg-white border border-slate-200 rounded-xl px-5 py-4 hover:border-[#0144D8] transition-colors"
-        >
-          <p className="text-xs text-slate-500">Active Employees</p>
-          <p className="text-xl font-bold font-mono-tabular text-slate-900 mt-1">{metrics.totalEmployees}</p>
-        </button>
+        {(isAdmin || isFinance) && (
+          <button
+            onClick={() => onNavigate('staff')}
+            className="text-left bg-white border border-slate-200 rounded-xl px-5 py-4 hover:border-[#0144D8] transition-colors"
+          >
+            <p className="text-xs text-slate-500">Active Employees</p>
+            <p className="text-xl font-bold font-mono-tabular text-slate-900 mt-1">{metrics.totalEmployees}</p>
+          </button>
+        )}
         <button
           onClick={() => onNavigate('projects')}
           className="text-left bg-white border border-slate-200 rounded-xl px-5 py-4 hover:border-[#0144D8] transition-colors"
