@@ -94,7 +94,8 @@ interface DataContextValue {
     businessAddress: string;
     businessCategory?: string;
     websiteUrl?: string;
-    websiteType?: 'static' | 'automated' | '';
+    websiteType?: 'static' | 'automated' | 'school_management' | 'business_management' | 'cac_registration' | 'social_media_management' | 'social_media_boost' | 'other' | '';
+    otherService?: string;
     agreedProjectAmount?: number;
     amountPaid?: number;
     salesRepUid?: string;
@@ -601,6 +602,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       businessCategory: input.businessCategory?.trim() || '',
       websiteUrl: input.websiteUrl?.trim() || '',
       websiteType: input.websiteType || '',
+      otherService: input.otherService?.trim() || '',
       agreedProjectAmount: Math.max(0, Number(input.agreedProjectAmount || 0)),
       amountPaid: Math.max(0, Number(input.amountPaid || 0)),
       outstandingBalance: Math.max(0, Number(input.agreedProjectAmount || 0) - Number(input.amountPaid || 0)),
