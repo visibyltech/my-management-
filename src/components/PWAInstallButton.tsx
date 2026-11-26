@@ -5,6 +5,8 @@ import { useOnlineStatus, usePWAInstall } from '../hooks/usePWAInstall';
 export const PWAInstallButton: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [showIOSGuide, setShowIOSGuide] = useState(false);
+  const [showAndroidGuide, setShowAndroidGuide] = useState(false);
+  const isAndroid = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
 
   if (isInstalled) {
     return null;
@@ -67,6 +69,41 @@ export const PWAInstallButton: React.FC<{ compact?: boolean }> = ({ compact = fa
               >
                 Done
               </button>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  if (isAndroid) {
+    return (
+      <>
+        <button
+          onClick={() => setShowAndroidGuide(true)}
+          type="button"
+          className={`inline-flex items-center justify-center gap-2 rounded-lg bg-[#0144D8] text-white font-semibold hover:bg-[#0133A6] transition-colors whitespace-nowrap shrink-0 ${compact ? 'px-3 py-2 text-xs' : 'px-4 py-2 text-xs'}`}
+        >
+          <Download className="w-4 h-4" />
+          <span>Install App</span>
+        </button>
+        {showAndroidGuide && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white border border-slate-200 p-6">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-base font-bold text-slate-900">Install Visibyl Ops</h3>
+                <button onClick={() => setShowAndroidGuide(false)} className="p-2 rounded-lg text-slate-500 hover:bg-slate-100" aria-label="Close">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="mt-3 text-sm text-slate-600">Chrome has not provided its one-tap install prompt on this visit. You can still check its install option:</p>
+              <ol className="mt-3 space-y-2 text-sm text-slate-700 list-decimal list-inside">
+                <li>Tap Chrome's three-dot menu in the top-right corner.</li>
+                <li>Look for <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li>
+                <li>Tap it and follow the confirmation shown by Chrome.</li>
+              </ol>
+              <p className="mt-3 text-xs text-slate-500">If neither option appears, Chrome currently considers the site not installable. This button cannot override that browser restriction.</p>
+              <button onClick={() => setShowAndroidGuide(false)} className="mt-5 w-full rounded-lg bg-[#0144D8] py-2.5 text-sm font-semibold text-white">Close</button>
             </div>
           </div>
         )}
