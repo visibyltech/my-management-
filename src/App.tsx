@@ -72,7 +72,7 @@ const AppContent: React.FC = () => {
       setOnboardingFormId(formId);
       if (formId) return;
 
-      if (state?.visibylApp && state.section && canAccessSection(state.section)) {
+      if (state?.visibylApp && state.section) {
         setActiveSection(state.section);
         setSelectedEntityId(null);
         return;
@@ -89,7 +89,7 @@ const AppContent: React.FC = () => {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [activeSection, canAccessSection]);
+  }, []);
 
   const openOnboardingForm = useCallback((formId: string) => {
     const url = new URL(window.location.href);
