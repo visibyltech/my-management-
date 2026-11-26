@@ -201,7 +201,6 @@ const AppContent: React.FC = () => {
         {effectiveSection === 'settings' && <SettingsView />}
       </Layout>
       <OfflineIndicator />
-      <AutomaticInstallPrompt />
     </>
   );
 };
@@ -211,7 +210,10 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <DataProvider>
-          <AppContent />
+          <>
+            <AppContent />
+            <AutomaticInstallPrompt />
+          </>
         </DataProvider>
       </AuthProvider>
     </ErrorBoundary>
