@@ -103,7 +103,8 @@ export interface Customer {
   businessAddress: string;
   businessCategory?: string;
   websiteUrl?: string;
-  websiteType?: 'static' | 'automated' | 'school_management' | 'business_management' | '';
+  websiteType?: 'static' | 'automated' | 'school_management' | 'business_management' | 'cac_registration' | 'social_media_management' | 'social_media_boost' | 'other' | '';
+  otherService?: string;
   agreedProjectAmount?: number;
   amountPaid?: number;
   outstandingBalance?: number;
