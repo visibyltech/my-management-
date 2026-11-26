@@ -69,17 +69,22 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
 
   // Banking-style multi-field search (Name, Business, Phone, Email, Customer ID, Account Number)
   const filteredCustomers = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter(
-      (c) =>
-        c.fullName.toLowerCase().includes(q) ||
-        c.businessName.toLowerCase().includes(q) ||
-        c.phone.toLowerCase().includes(q) ||
-        c.email.toLowerCase().includes(q) ||
-        c.customerCode.toLowerCase().includes(q) ||
-        c.accountNumber.toLowerCase().includes(q)
-    );
+    const rawQuery = search.trim();
+    if (!rawQuery) return customers;
+    const q = rawQuery.toLowerCase();
+    const digitsQuery = rawQuery.replace(/\D/g, '');
+    return customers.filter((c) => {
+      const values = [
+        c.fullName, c.businessName, c.phone, c.email, c.customerCode,
+        String(c.accountNumber ?? ''),
+      ];
+      const textMatch = values.some((value) => String(value ?? '').toLowerCase().includes(q));
+      const accountDigits = String(c.accountNumber ?? '').replace(/\D/g, '');
+      const codeDigits = String(c.customerCode ?? '').replace(/\D/g, '');
+      const numericMatch = digitsQuery.length > 0 &&
+        (accountDigits.includes(digitsQuery) || codeDigits.includes(digitsQuery));
+      return textMatch || numericMatch;
+    });
   }, [customers, search]);
 
   const activeSalesReps = staffPublic.filter(
