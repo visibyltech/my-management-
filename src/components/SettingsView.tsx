@@ -1,18 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Bot,
-  CheckCircle2,
-  Download,
-  Landmark,
-  Lock,
-  Plus,
-  Smartphone,
-  Trash2,
-} from 'lucide-react';
-import { PWAInstallButton } from './PWAInstallButton';
+import { CheckCircle2, Landmark, Lock, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
-import { auth } from '../lib/firebase';
 import { CompanySettings } from '../types/visibyl';
 import { formatNaira } from '../utils/formatters';
 
@@ -36,8 +25,6 @@ export const SettingsView: React.FC = () => {
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState<string | null>(null);
 
-  const [visaraTestResult, setVisaraTestResult] = useState<string | null>(null);
-  const [testingVisara, setTestingVisara] = useState(false);
 
   useEffect(() => {
     setCompanyForm(settings);
@@ -79,29 +66,12 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  const handleTestVisaraApi = async () => {
-    setTestingVisara(true);
-    setVisaraTestResult(null);
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const resp = await fetch('/api/visara/capabilities', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await resp.json();
-      setVisaraTestResult(JSON.stringify(data, null, 2));
-    } catch (err) {
-      setVisaraTestResult(err instanceof Error ? err.message : 'Unable to reach VISARA API');
-    } finally {
-      setTestingVisara(false);
-    }
-  };
-
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
         <h2 className="text-xl font-bold text-slate-900">Settings & Platform Configuration</h2>
         <p className="text-sm text-slate-500 mt-0.5">
-          Manage your staff payout profile, company banking controls, VISARA AI readiness, and mobile app installation.
+          Manage your staff payout profile and company configuration.
         </p>
       </div>
 
@@ -388,88 +358,6 @@ export const SettingsView: React.FC = () => {
         )}
       </form>
 
-      {/* VISARA AI Assistant Integration Readiness */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-lg bg-[#F0F5FF] text-[#0144D8]">
-              <Bot className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">VISARA AI Assistant Integration APIs</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Token-verified REST endpoints enforcing role-based clearance (Developers blocked from financial endpoints).
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleTestVisaraApi}
-            disabled={testingVisara}
-            className="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-800 hover:bg-slate-50 whitespace-nowrap self-start"
-          >
-            {testingVisara ? 'Verifying...' : 'Verify VISARA Endpoint'}
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs font-mono-tabular">
-          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">GET /api/visara/capabilities</div>
-          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">GET /api/visara/search?q=</div>
-          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">GET /api/visara/projects/:id</div>
-          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">GET /api/visara/financial-summary</div>
-          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">GET /api/visara/outstanding-payments</div>
-          <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">GET /api/visara/staff-performance</div>
-        </div>
-
-        {visaraTestResult && (
-          <pre className="p-4 rounded-xl bg-slate-900 text-emerald-300 text-xs font-mono-tabular overflow-x-auto">
-            {visaraTestResult}
-          </pre>
-        )}
-      </div>
-
-      {/* Mobile App Distribution (PWA + Android/iOS Capacitor Build Kit) */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-lg bg-[#F0F5FF] text-[#0144D8]">
-              <Smartphone className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Mobile Installation & Native Packaging</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Install directly on Android & iOS via PWA with the VISIBYL symbol icon, or download the Capacitor Android APK / iOS TestFlight build manifest.
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <PWAInstallButton />
-            <a
-              href="/api/mobile/build-kit"
-              download="visibyl-mobile-build-kit.json"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-300 bg-white text-xs font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              <Download className="w-4 h-4 text-[#0144D8]" />
-              <span>Download Mobile Build Kit</span>
-            </a>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-slate-600">
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-            <p className="font-bold text-slate-900">Android APK Release (Capacitor + Gradle)</p>
-            <p>Configured in <code className="font-mono-tabular">capacitor.config.ts</code> (<code className="font-mono-tabular">com.visibyltechnologies.operations</code>).</p>
-            <p className="font-mono-tabular text-[11px] text-slate-700">
-              npm run build && npx cap add android && cd android && ./gradlew assembleRelease
-            </p>
-          </div>
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-            <p className="font-bold text-slate-900">iOS Distribution (Xcode / TestFlight)</p>
-            <p>Installable via Safari Add to Home Screen immediately, or compile IPA via Apple Xcode:</p>
-            <p className="font-mono-tabular text-[11px] text-slate-700">
-              npm run build && npx cap add ios && npx cap open ios
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
