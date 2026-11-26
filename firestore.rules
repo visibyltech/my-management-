@@ -219,6 +219,8 @@ service cloud.firestore {
         (!('otherService' in data) || (data.otherService is string && data.otherService.size() <= 160)) &&
         (!('dealClosedDate' in data) || (data.dealClosedDate is string && data.dealClosedDate.size() <= 40)) &&
         (!('domainPurchaseDate' in data) || (data.domainPurchaseDate is string && data.domainPurchaseDate.size() <= 40)) &&
+        (!('dealClosedDate' in data) || (data.dealClosedDate is string && data.dealClosedDate.size() <= 40)) &&
+        (!('domainPurchaseDate' in data) || (data.domainPurchaseDate is string && data.domainPurchaseDate.size() <= 40)) &&
         (!('websiteType' in data) || data.websiteType in ['', 'static', 'automated', 'school_management', 'business_management', 'cac_registration', 'social_media_management', 'social_media_boost', 'other']) &&
         (!('agreedProjectAmount' in data) || (data.agreedProjectAmount is number && data.agreedProjectAmount >= 0)) &&
         (!('amountPaid' in data) || (data.amountPaid is number && data.amountPaid >= 0)) &&
