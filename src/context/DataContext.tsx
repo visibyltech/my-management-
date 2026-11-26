@@ -93,6 +93,10 @@ interface DataContextValue {
     email: string;
     businessAddress: string;
     businessCategory?: string;
+    websiteUrl?: string;
+    websiteType?: 'static' | 'automated' | '';
+    agreedProjectAmount?: number;
+    amountPaid?: number;
     salesRepUid?: string;
     salesRepName?: string;
     notes?: string;
@@ -595,6 +599,11 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: input.email.toLowerCase().trim(),
       businessAddress: input.businessAddress.trim(),
       businessCategory: input.businessCategory?.trim() || '',
+      websiteUrl: input.websiteUrl?.trim() || '',
+      websiteType: input.websiteType || '',
+      agreedProjectAmount: Math.max(0, Number(input.agreedProjectAmount || 0)),
+      amountPaid: Math.max(0, Number(input.amountPaid || 0)),
+      outstandingBalance: Math.max(0, Number(input.agreedProjectAmount || 0) - Number(input.amountPaid || 0)),
       registrationDate: todayISO(),
       salesRepUid: input.salesRepUid || actorUid,
       salesRepName: input.salesRepName || actorName,
@@ -638,6 +647,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const merged: Customer = {
       ...existing,
       ...updates,
+      agreedProjectAmount: Math.max(0, Number(updates.agreedProjectAmount ?? existing.agreedProjectAmount ?? 0)),
+      amountPaid: Math.max(0, Number(updates.amountPaid ?? existing.amountPaid ?? 0)),
+      outstandingBalance: Math.max(0, Number(updates.agreedProjectAmount ?? existing.agreedProjectAmount ?? 0) - Number(updates.amountPaid ?? existing.amountPaid ?? 0)),
       email: (updates.email ?? existing.email).toLowerCase().trim(),
       updatedAt: now,
     };
