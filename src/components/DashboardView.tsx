@@ -8,6 +8,13 @@ import {
   FileText,
   Send,
   Upload,
+  Building2,
+  Users,
+  BriefcaseBusiness,
+  Wallet,
+  TrendingUp,
+  Receipt,
+  Activity,
 } from 'lucide-react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
@@ -533,11 +540,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
 
   return (
     <div className="space-y-6">
+      {/* Executive masthead */}
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#061B49] via-[#0B347E] to-[#0755D8] px-5 py-5 sm:px-7 sm:py-6 text-white shadow-lg">
+        <div className="absolute -right-10 -top-16 h-48 w-48 rounded-full border-[24px] border-white/5" />
+        <div className="absolute right-24 -bottom-20 h-44 w-44 rounded-full border-[18px] border-white/5" />
+        <div className="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-100">
+              <Building2 className="h-3.5 w-3.5" /> VISIBYL TECHNOLOGIES
+            </div>
+            <h2 className="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">{isAdmin || isFinance ? 'Executive command centre' : 'Performance command centre'}</h2>
+            <p className="mt-1.5 max-w-xl text-xs sm:text-sm text-blue-100/85">Business performance, financial position and operational delivery — in one clear view.</p>
+          </div>
+          <div className="relative rounded-xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur-sm">
+            <p className="text-[10px] uppercase tracking-wider text-blue-100">Net income · selected period</p>
+            <p className="mt-1 text-xl sm:text-2xl font-bold font-mono-tabular">{formatNaira(metrics.periodNetIncome)}</p>
+            <p className="mt-1 text-[10px] text-blue-100/80">Revenue less recorded expenses</p>
+          </div>
+        </div>
+      </section>
+
       {/* Header Row & Timeframe Selector */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-[#0144D8] mb-1">VISIBYL TECHNOLOGIES · OPERATIONS</p>
-          <h2 className="text-xl font-bold tracking-tight text-slate-950">
+          <p className="text-[10px] uppercase tracking-[0.18em] font-bold text-[#0144D8] mb-1">OPERATIONS SNAPSHOT</p>
+          <h2 className="text-lg font-bold tracking-tight text-slate-950">
             {isAdmin || isFinance ? 'Executive Overview' : 'Performance Overview'}
           </h2>
           <p className="text-xs text-slate-500 mt-1">A clear view of business performance, cash flow and delivery.</p>
@@ -559,9 +586,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
 
       {/* Primary KPI Strip */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+        <div className="group bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-200 transition-all">
           <p className="text-xs font-medium text-slate-500">Confirmed Revenue ({timeframe === 'all' ? 'Total' : timeframe})</p>
-          <p className="text-2xl font-bold font-mono-tabular text-[#0144D8] mt-1.5">
+          <p className="text-xl sm:text-2xl font-bold font-mono-tabular text-[#0144D8] mt-1.5 tracking-tight">
             {formatNaira(metrics.periodRevenue)}
           </p>
           <p className="text-xs text-slate-500 mt-1 font-mono-tabular">
@@ -569,9 +596,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           </p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
+        <div className="group bg-white border border-slate-200/80 rounded-xl p-4 shadow-sm hover:shadow-md hover:border-blue-200 transition-all">
           <p className="text-xs font-medium text-slate-500">Outstanding Balances</p>
-          <p className="text-2xl font-bold font-mono-tabular text-amber-700 mt-1.5">
+          <p className="text-xl sm:text-2xl font-bold font-mono-tabular text-amber-700 mt-1.5 tracking-tight">
             {formatNaira(metrics.totalOutstanding)}
           </p>
           <p className="text-xs text-slate-500 mt-1 font-mono-tabular">
@@ -583,7 +610,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           <>
             <div className="bg-white border border-slate-200 rounded-xl p-5">
               <p className="text-xs font-medium text-slate-500">Total Expenses ({timeframe === 'all' ? 'Total' : timeframe})</p>
-              <p className="text-2xl font-bold font-mono-tabular text-slate-900 mt-1.5">
+              <p className="text-xl sm:text-2xl font-bold font-mono-tabular text-slate-900 mt-1.5 tracking-tight">
                 {formatNaira(metrics.periodExpenses)}
               </p>
               <p className="text-xs text-slate-500 mt-1 font-mono-tabular">
@@ -630,7 +657,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         <button
           onClick={() => onNavigate('customers')}
-          className="text-left bg-white border border-slate-200 rounded-xl px-4 py-3.5 hover:border-[#0144D8] hover:shadow-sm transition-all"
+          className="group text-left bg-white border border-slate-200/80 rounded-xl px-4 py-3 hover:border-blue-300 hover:shadow-md transition-all"
         >
           <p className="text-xs text-slate-500">Total Customers</p>
           <p className="text-xl font-bold font-mono-tabular text-slate-900 mt-1">{metrics.totalCustomers}</p>
@@ -638,7 +665,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
         {isSuperAdmin && (
           <button
             onClick={() => onNavigate('staff')}
-            className="text-left bg-white border border-slate-200 rounded-xl px-5 py-4 hover:border-[#0144D8] transition-colors"
+            className="group text-left bg-white border border-slate-200/80 rounded-xl px-4 py-3 hover:border-blue-300 hover:shadow-md transition-all"
           >
             <p className="text-xs text-slate-500">Active Employees</p>
             <p className="text-xl font-bold font-mono-tabular text-slate-900 mt-1">{metrics.totalEmployees}</p>
