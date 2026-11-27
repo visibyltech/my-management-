@@ -25,6 +25,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
   );
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const invoiceSheetRef = useRef<HTMLDivElement>(null);
 
@@ -86,8 +87,17 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
         : customerSource === 'manual'
           ? { id: '', ...manualCustomer, salesRepUid: '' }
           : undefined;
-    if (!invoiceCustomer?.fullName.trim() || !invoiceCustomer.phone.trim()) return;
+    if (!invoiceCustomer?.fullName.trim() || !invoiceCustomer.phone.trim()) {
+      setFormError('Please provide the customer name and phone number before issuing this invoice.');
+      return;
+    }
+    const validItems = items.filter((i) => i.description.trim() && Number(i.quantity) > 0 && Number(i.unitPrice) >= 0);
+    if (validItems.length === 0) {
+      setFormError('Please add at least one valid invoice line item.');
+      return;
+    }
     const project = customerSource === 'customer' ? projects.find((p) => p.id === projectId) : undefined;
+    setFormError('');
     setSaving(true);
     try {
       const created = await createInvoice({
@@ -95,12 +105,22 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
         project,
         issueDate,
         dueDate,
-        items: items.filter((i) => i.description.trim() && i.total >= 0),
+        items: validItems,
         amountPaid: Number(amountPaid || 0),
         notes,
       });
+      if (!created?.id) throw new Error('The invoice could not be confirmed as saved. Please check Issued Invoices before trying again.');
       setSelectedInvoice(created);
       setShowCreateModal(false);
+    } catch (error) {
+      let message = error instanceof Error ? error.message : String(error);
+      try {
+        const parsed = JSON.parse(message);
+        message = parsed.error || parsed.message || message;
+      } catch {
+        // Keep the original readable error when it is not JSON.
+      }
+      setFormError(`Invoice was not issued: ${message}. Please check your connection and try again.`);
     } finally {
       setSaving(false);
     }
@@ -177,6 +197,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
         </div>
         <button
           onClick={() => {
+            setFormError('');
             setCustomerSource(customers.length ? 'customer' : leads.length ? 'lead' : 'manual');
             setCustomerId(customers[0]?.id || '');
             setLeadId('');
@@ -611,6 +632,11 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                 />
               </div>
 
+              {formError && (
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                  {formError}
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
@@ -622,7 +648,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 rounded-lg bg-[#0144D8] text-white text-xs font-semibold hover:bg-[#0133A6]"
+                  className="px-5 py-2 rounded-lg bg-[#0144D8] text-white text-xs font-semibold hover:bg-[#0133A6] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {saving ? 'Issuing Invoice...' : 'Issue Invoice'}
                 </button>
