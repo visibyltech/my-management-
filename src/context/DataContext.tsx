@@ -168,7 +168,16 @@ interface DataContextValue {
   markOnboardingReviewed: (formId: string) => Promise<void>;
 
   createInvoice: (input: {
-    customer: Customer;
+    customer: {
+      id?: string;
+      customerCode?: string;
+      fullName: string;
+      businessName: string;
+      email: string;
+      phone: string;
+      businessAddress: string;
+      salesRepUid?: string;
+    };
     project?: Project;
     issueDate: string;
     dueDate: string;
@@ -1057,13 +1066,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const invoice: Invoice = {
       id,
       invoiceNumber: generateInvoiceNumber(),
-      customerId: input.customer.id,
-      customerCode: input.customer.customerCode,
-      customerName: input.customer.fullName,
-      customerBusinessName: input.customer.businessName,
+      customerId: input.customer.id || '',
+      customerCode: input.customer.customerCode || '',
+      customerName: input.customer.fullName.trim(),
+      customerBusinessName: input.customer.businessName.trim(),
       customerEmail: input.customer.email.toLowerCase().trim(),
-      customerPhone: input.customer.phone,
-      customerAddress: input.customer.businessAddress,
+      customerPhone: input.customer.phone.trim(),
+      customerAddress: input.customer.businessAddress.trim(),
       projectId: input.project?.id || '',
       projectCode: input.project?.projectCode || '',
       salesRepUid: input.customer.salesRepUid || actorUid,
