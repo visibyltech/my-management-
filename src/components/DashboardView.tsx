@@ -97,10 +97,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       let outstandingBalance = 0;
       let sourceCount = 0;
 
-      if (customerProjects.length > 0) {
-        customerProjects.forEach((project) => {
-          const financial = projectFinancials.get(project.id);
-          if (!financial) return;
+      const recordedProjectFinancials = customerProjects
+        .map((project) => projectFinancials.get(project.id))
+        .filter((financial): financial is NonNullable<typeof financial> => Boolean(financial));
+
+      if (recordedProjectFinancials.length > 0) {
+        recordedProjectFinancials.forEach((financial) => {
           agreedAmount += Number(financial.agreedPrice || 0);
           amountPaid += Number(financial.totalPaid || 0);
           outstandingBalance += Math.max(0, Number(financial.outstandingBalance || 0));
@@ -726,7 +728,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                 <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-500">
                   <th className="py-3 px-5">Customer</th>
                   <th className="py-3 px-4 text-right">Agreed / Invoiced</th>
-                  <th className="py-3 px-4 text-right">Confirmed Paid</th>
+                  <th className="py-3 px-4 text-right">Recorded Paid</th>
                   <th className="py-3 px-5 text-right">Outstanding</th>
                 </tr>
               </thead>
