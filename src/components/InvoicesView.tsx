@@ -2,6 +2,9 @@ import React, { useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
+import { Capacitor } from '@capacitor/core';
+import { Directory, Filesystem } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import {
   Download,
   FileSpreadsheet,
@@ -32,6 +35,8 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [sharingWhatsApp, setSharingWhatsApp] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState('');
   const invoiceSheetRef = useRef<HTMLDivElement>(null);
 
   const [customerSource, setCustomerSource] = useState<'customer' | 'lead' | 'manual'>('customer');
@@ -147,43 +152,61 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
     }
   };
 
-  const handleDownloadPdf = async () => {
-    if (!invoiceSheetRef.current || !selectedInvoice) return;
-    setDownloadingPdf(true);
-    try {
-      const dataUrl = await toPng(invoiceSheetRef.current, {
-        cacheBust: true,
-        pixelRatio: 2,
-        backgroundColor: '#FFFFFF',
-      });
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const props = pdf.getImageProperties(dataUrl);
-      const imgHeight = (props.height * pageWidth) / props.width;
-      pdf.addImage(dataUrl, 'PNG', 0, 0, pageWidth, imgHeight);
-      pdf.save(`${selectedInvoice.invoiceNumber}.pdf`);
-    } finally {
-      setDownloadingPdf(false);
+  const createInvoicePdf = async (invoice: Invoice) => {
+    if (!invoiceSheetRef.current) throw new Error('Invoice preview is not ready.');
+    const dataUrl = await toPng(invoiceSheetRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: '#FFFFFF' });
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const props = pdf.getImageProperties(dataUrl);
+    const imageHeight = (props.height * pageWidth) / props.width;
+    const pageCount = Math.max(1, Math.ceil(imageHeight / pageHeight));
+    // Continue the complete invoice image onto additional A4 pages instead of cropping it.
+    for (let page = 0; page < pageCount; page += 1) {
+      if (page > 0) pdf.addPage();
+      pdf.addImage(dataUrl, 'PNG', 0, -(page * pageHeight), pageWidth, imageHeight);
     }
+    return pdf;
   };
 
-  const shareWhatsApp = (inv: Invoice) => {
-    const text = encodeURIComponent(
-      `OFFICIAL INVOICE — VISIBYL TECHNOLOGIES\n` +
-        `Invoice No: ${inv.invoiceNumber}\n` +
-        `Client: ${inv.customerBusinessName || inv.customerName}\n` +
-        `Total Charged: ${formatNaira(inv.totalAmount)}\n` +
-        `Amount Paid: ${formatNaira(inv.amountPaid)}\n` +
-        `Outstanding Balance: ${formatNaira(inv.outstandingBalance)}\n` +
-        `Payment Due: ${formatDate(inv.dueDate)}\n\n` +
-        `PAYMENT INFORMATION:\n` +
-        `Account Name: ${settings.bankAccountName}\n` +
-        `Bank: ${settings.bankName}\n` +
-        `Account Number: ${settings.bankAccountNumber}`
-    );
-    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
+  const handleDownloadPdf = async () => {
+    if (!selectedInvoice) return;
+    setDownloadingPdf(true);
+    setShareFeedback('');
+    try {
+      const pdf = await createInvoicePdf(selectedInvoice);
+      pdf.save(`${selectedInvoice.invoiceNumber}.pdf`);
+    } catch (error) {
+      setShareFeedback(error instanceof Error ? error.message : 'Unable to create the invoice PDF.');
+    } finally { setDownloadingPdf(false); }
   };
 
+  const shareWhatsApp = async (invoice: Invoice) => {
+    setSharingWhatsApp(true);
+    setShareFeedback('');
+    try {
+      const pdf = await createInvoicePdf(invoice);
+      const title = `Invoice ${invoice.invoiceNumber} — VISIBYL Technologies`;
+      const message = `Please find attached invoice ${invoice.invoiceNumber} from VISIBYL Technologies.`;
+      if (Capacitor.isNativePlatform()) {
+        const dataUri = pdf.output('datauristring');
+        const base64 = dataUri.slice(dataUri.indexOf(',') + 1);
+        const savedFile = await Filesystem.writeFile({ path: `invoices/${invoice.invoiceNumber}.pdf`, data: base64, directory: Directory.Cache, recursive: true });
+        await Share.share({ title, text: message, files: [savedFile.uri], dialogTitle: 'Share invoice PDF' });
+      } else {
+        const blob = pdf.output('blob');
+        const file = new File([blob], `${invoice.invoiceNumber}.pdf`, { type: 'application/pdf' });
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ title, text: message, files: [file] });
+        } else {
+          pdf.save(`${invoice.invoiceNumber}.pdf`);
+          setShareFeedback('The invoice PDF has been downloaded. Open WhatsApp, attach this PDF file, and send it to your customer.');
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') setShareFeedback(error.message || 'Unable to share the invoice PDF. Download it and attach it in WhatsApp.');
+    } finally { setSharingWhatsApp(false); }
+  };
   const shareEmail = (inv: Invoice) => {
     const subject = encodeURIComponent(`Invoice ${inv.invoiceNumber} — VISIBYL Technologies`);
     const body = encodeURIComponent(
@@ -322,10 +345,11 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                   </button>
                   <button
                     onClick={() => shareWhatsApp(selectedInvoice)}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
+                    disabled={sharingWhatsApp}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 disabled:opacity-60"
                   >
                     <MessageCircle className="w-3.5 h-3.5" />
-                    <span>WhatsApp</span>
+                    <span>{sharingWhatsApp ? 'Preparing PDF...' : 'WhatsApp PDF'}</span>
                   </button>
                   <button
                     onClick={() => shareEmail(selectedInvoice)}
@@ -337,6 +361,8 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                 </div>
               </div>
 
+              {shareFeedback && <div role="status" className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800 no-print">{shareFeedback}</div>}
+
               {/* Official A4 Corporate Invoice Sheet */}
               <div
                 ref={invoiceSheetRef}
@@ -344,7 +370,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
               >
                 {/* Top Corporate Royal Blue Header */}
                 <div className="bg-[#0144D8] px-6 sm:px-8 py-5 sm:py-6 text-white flex flex-row items-center justify-between gap-4">
-                  <BrandLogo variant="full" className="h-9 sm:h-10 w-auto max-w-[150px] sm:max-w-[180px] shrink" />
+                  <BrandLogo variant="full" className="h-7 sm:h-8 w-auto max-w-[112px] sm:max-w-[140px] shrink min-w-0" />
                   <div className="sm:text-right">
                     <p className="text-xs uppercase tracking-widest text-blue-200 font-semibold">Official Invoice</p>
                     <p className="text-xl font-bold font-mono-tabular mt-0.5">{selectedInvoice.invoiceNumber}</p>
@@ -398,7 +424,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
 
                   {/* Line Items Table */}
                   <div>
-                    <table className="hidden sm:table w-full table-fixed text-left border-collapse">
+                    <table className="hidden md:table w-full table-fixed text-left border-collapse">
                       <thead>
                         <tr className="border-b-2 border-[#0144D8] text-[11px] uppercase tracking-wider font-bold text-[#0144D8]">
                           <th className="py-3 pr-4">Service / Description</th>
@@ -422,7 +448,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                         ))}
                       </tbody>
                     </table>
-                    <div className="sm:hidden space-y-3">
+                    <div className="md:hidden space-y-3">
                       {selectedInvoice.items.map((item, idx) => <div key={idx} className="rounded-lg border border-slate-200 p-3 text-xs space-y-2">
                         <p className="font-semibold text-slate-900 break-words">{item.description}</p>
                         <div className="grid grid-cols-3 gap-2 text-slate-600">
