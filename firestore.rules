@@ -252,7 +252,7 @@ service cloud.firestore {
         data.projectCode is string && data.projectCode.matches('^VSB-PRJ-[0-9]{4,8}$') &&
         data.title is string && data.title.size() >= 2 && data.title.size() <= 160 &&
         data.serviceType is string && data.serviceType.size() >= 2 && data.serviceType.size() <= 120 &&
-        isValidId(data.customerId) &&
+        data.customerId is string && (data.customerId == '' || isValidId(data.customerId)) &&
         data.customerCode is string && data.customerCode.size() <= 32 &&
         data.customerName is string && data.customerName.size() <= 120 &&
         data.customerBusinessName is string && data.customerBusinessName.size() <= 160 &&
@@ -732,7 +732,7 @@ service cloud.firestore {
       allow list: if isAdmin() || isFinance() ||
         (isSales() && resource.data.salesRepUid == request.auth.uid) ||
         (isSignedIn() && resource.data.customerEmail == authEmail());
-      allow create: if isValidId(invoiceId) && (isAdmin() || isFinance() || isSales()) && isValidInvoice(incoming()) && incoming().id == invoiceId && incoming().createdByUid == request.auth.uid && exists(/databases/$(database)/documents/customers/$(incoming().customerId));
+      allow create: if isValidId(invoiceId) && (isAdmin() || isFinance() || isSales()) && isValidInvoice(incoming()) && incoming().id == invoiceId && incoming().createdByUid == request.auth.uid && (\n        (incoming().customerId == '' && (!('projectId' in incoming()) || incoming().projectId == '')) ||\n        (isValidId(incoming().customerId) && exists(/databases/$(database)/documents/customers/$(incoming().customerId)))\n      );
       allow update: if isValidId(invoiceId) && isValidInvoice(incoming()) && incoming().id == existing().id && incoming().createdByUid == existing().createdByUid && (isAdmin() || isFinance());
       allow delete: if false;
     }
