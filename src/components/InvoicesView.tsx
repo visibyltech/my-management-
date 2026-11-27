@@ -21,7 +21,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
   const { customers, projects, projectFinancials, invoices, leads, settings, createInvoice } = useData();
 
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(() =>
-    initialSelectedId ? invoices.find((i) => i.id === initialSelectedId) || null : invoices[0] || null
+    initialSelectedId ? invoices.find((i) => i.id === initialSelectedId) || null : null
   );
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -214,7 +214,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Invoice List */}
-        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-xl overflow-hidden no-print">
+        <div className={`lg:col-span-4 bg-white border border-slate-200 rounded-xl overflow-hidden no-print ${selectedInvoice ? 'hidden lg:block' : 'block'}`}>
           <div className="px-4 py-3.5 border-b border-slate-200">
             <h3 className="text-xs font-bold text-slate-800">Issued Invoices ({invoices.length})</h3>
           </div>
@@ -264,7 +264,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
         </div>
 
         {/* Official Corporate Invoice Preview & Actions */}
-        <div className="lg:col-span-8 space-y-4">
+        <div className={`lg:col-span-8 space-y-4 ${selectedInvoice ? 'block' : 'hidden lg:block'}`}>
           {!selectedInvoice ? (
             <div className="bg-white border border-slate-200 rounded-xl p-12 text-center text-slate-500">
               <p className="text-sm font-semibold text-slate-700">Select or generate an invoice to preview</p>
@@ -273,6 +273,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
             <>
               {/* Action Toolbar */}
               <div className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-2 no-print">
+                <button onClick={() => setSelectedInvoice(null)} className="lg:hidden text-xs font-semibold text-[#0144D8]">← All invoices</button>
                 <span className="text-xs font-mono-tabular font-bold text-slate-700">
                   {selectedInvoice.invoiceNumber}
                 </span>
@@ -315,8 +316,8 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                 className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm print-only-sheet"
               >
                 {/* Top Corporate Royal Blue Header */}
-                <div className="bg-[#0144D8] px-8 py-7 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                  <BrandLogo variant="full" className="h-14 sm:h-16 w-auto" />
+                <div className="bg-[#0144D8] px-6 sm:px-8 py-5 sm:py-6 text-white flex flex-row items-center justify-between gap-4">
+                  <BrandLogo variant="full" className="h-9 sm:h-10 w-auto max-w-[150px] sm:max-w-[180px] shrink" />
                   <div className="sm:text-right">
                     <p className="text-xs uppercase tracking-widest text-blue-200 font-semibold">Official Invoice</p>
                     <p className="text-xl font-bold font-mono-tabular mt-0.5">{selectedInvoice.invoiceNumber}</p>
