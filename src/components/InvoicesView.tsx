@@ -2,6 +2,9 @@ import React, { useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
+import { Capacitor } from '@capacitor/core';
+import { Directory, Filesystem } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import {
   Download,
   FileSpreadsheet,
@@ -183,13 +186,22 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
     setShareFeedback('');
     try {
       const pdf = await createInvoicePdf(invoice);
-      const blob = pdf.output('blob');
-      const file = new File([blob], `${invoice.invoiceNumber}.pdf`, { type: 'application/pdf' });
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ title: `Invoice ${invoice.invoiceNumber} — VISIBYL Technologies`, text: `Please find attached invoice ${invoice.invoiceNumber} from VISIBYL Technologies.`, files: [file] });
+      const title = `Invoice ${invoice.invoiceNumber} — VISIBYL Technologies`;
+      const message = `Please find attached invoice ${invoice.invoiceNumber} from VISIBYL Technologies.`;
+      if (Capacitor.isNativePlatform()) {
+        const dataUri = pdf.output('datauristring');
+        const base64 = dataUri.slice(dataUri.indexOf(',') + 1);
+        const savedFile = await Filesystem.writeFile({ path: `invoices/${invoice.invoiceNumber}.pdf`, data: base64, directory: Directory.Cache, recursive: true });
+        await Share.share({ title, text: message, files: [savedFile.uri], dialogTitle: 'Share invoice PDF' });
       } else {
-        pdf.save(`${invoice.invoiceNumber}.pdf`);
-        setShareFeedback('The invoice PDF has been downloaded. Open WhatsApp, attach this PDF file, and send it to your customer.');
+        const blob = pdf.output('blob');
+        const file = new File([blob], `${invoice.invoiceNumber}.pdf`, { type: 'application/pdf' });
+        if (navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ title, text: message, files: [file] });
+        } else {
+          pdf.save(`${invoice.invoiceNumber}.pdf`);
+          setShareFeedback('The invoice PDF has been downloaded. Open WhatsApp, attach this PDF file, and send it to your customer.');
+        }
       }
     } catch (error) {
       if (error instanceof Error && error.name !== 'AbortError') setShareFeedback(error.message || 'Unable to share the invoice PDF. Download it and attach it in WhatsApp.');
