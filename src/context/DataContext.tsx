@@ -185,6 +185,8 @@ interface DataContextValue {
     amountPaid?: number;
     notes?: string;
   }) => Promise<Invoice>;
+  updateInvoice: (invoiceId: string, input: { customer: { fullName: string; businessName: string; email: string; phone: string; businessAddress: string }; issueDate: string; dueDate: string; items: InvoiceLineItem[]; notes?: string }) => Promise<Invoice>;
+  deleteInvoice: (invoiceId: string) => Promise<void>;
 
   recordPayment: (input: {
     project: Project;
@@ -1118,6 +1120,58 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateInvoice: DataContextValue['updateInvoice'] = async (invoiceId, input) => {
+    if (!isSuperAdmin) throw new Error('Only the Super Admin can edit invoices.');
+    const existing = invoices.find((invoice) => invoice.id === invoiceId);
+    if (!existing) throw new Error('Invoice not found. Refresh and try again.');
+    const now = new Date().toISOString();
+    const totalAmount = input.items.reduce((sum, item) => sum + Number(item.total || 0), 0);
+    const amountPaid = existing.amountPaid;
+    const outstandingBalance = Math.max(0, totalAmount - amountPaid);
+    const status: Invoice['status'] = outstandingBalance <= 0 ? 'Paid' : amountPaid > 0 ? 'Partially Paid' : input.dueDate < todayISO() ? 'Overdue' : 'Unpaid';
+    const updated: Invoice = {
+      ...existing,
+      customerName: input.customer.fullName.trim(),
+      customerBusinessName: input.customer.businessName.trim(),
+      customerEmail: input.customer.email.trim().toLowerCase(),
+      customerPhone: input.customer.phone.trim(),
+      customerAddress: input.customer.businessAddress.trim(),
+      issueDate: input.issueDate,
+      dueDate: input.dueDate,
+      items: input.items,
+      totalAmount,
+      amountPaid,
+      outstandingBalance,
+      status,
+      notes: input.notes?.trim() || '',
+      updatedAt: now,
+    };
+    try {
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'invoices', invoiceId), updated);
+      appendLogAndNotif(batch, { action: 'updated', entityType: 'invoice', entityId: invoiceId, summary: `Updated invoice ${existing.invoiceNumber}` });
+      await batch.commit();
+      return updated;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `invoices/${invoiceId}`);
+    }
+  };
+
+  const deleteInvoice: DataContextValue['deleteInvoice'] = async (invoiceId) => {
+    if (!isSuperAdmin) throw new Error('Only the Super Admin can delete invoices.');
+    const existing = invoices.find((invoice) => invoice.id === invoiceId);
+    if (!existing) throw new Error('Invoice not found. Refresh and try again.');
+    if (payments.some((payment) => payment.invoiceId === invoiceId)) throw new Error('This invoice has linked payment records and cannot be deleted.');
+    try {
+      const batch = writeBatch(db);
+      batch.delete(doc(db, 'invoices', invoiceId));
+      appendLogAndNotif(batch, { action: 'deleted', entityType: 'invoice', entityId: invoiceId, summary: `Deleted invoice ${existing.invoiceNumber}` });
+      await batch.commit();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `invoices/${invoiceId}`);
+    }
+  };
+
   const recordPayment: DataContextValue['recordPayment'] = async (input) => {
     const fin = projectFinancials.get(input.project.id);
     const remaining = fin ? fin.outstandingBalance : input.amount;
@@ -1622,6 +1676,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         submitOnboardingForm,
         markOnboardingReviewed,
         createInvoice,
+        updateInvoice,
+        deleteInvoice,
         recordPayment,
         verifyPayment,
         updateCommissionPayout,

@@ -736,8 +736,8 @@ service cloud.firestore {
         (incoming().customerId == '' && (!('projectId' in incoming()) || incoming().projectId == '')) ||
         (isValidId(incoming().customerId) && exists(/databases/$(database)/documents/customers/$(incoming().customerId)))
       );
-      allow update: if isValidId(invoiceId) && isValidInvoice(incoming()) && incoming().id == existing().id && incoming().createdByUid == existing().createdByUid && (isAdmin() || isFinance());
-      allow delete: if false;
+      allow update: if isValidId(invoiceId) && isSuperAdmin() && isValidInvoice(incoming()) && incoming().id == existing().id && incoming().createdByUid == existing().createdByUid;
+      allow delete: if isValidId(invoiceId) && isSuperAdmin();
     }
 
     // Payments (Staff creates pending; only Admin/Finance verifies; No Deletes)

@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import {
@@ -10,6 +11,7 @@ import {
   Plus,
   Printer,
   Trash2,
+  Pencil,
   X,
 } from 'lucide-react';
 import { BrandLogo } from './BrandLogo';
@@ -18,12 +20,15 @@ import { Invoice, InvoiceLineItem } from '../types/visibyl';
 import { formatDate, formatNaira, todayISO } from '../utils/formatters';
 
 export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ initialSelectedId }) => {
-  const { customers, projects, projectFinancials, invoices, leads, settings, createInvoice } = useData();
+  const { customers, projects, projectFinancials, invoices, leads, payments, settings, createInvoice, updateInvoice, deleteInvoice } = useData();
+  const { isSuperAdmin } = useAuth();
 
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(() =>
     initialSelectedId ? invoices.find((i) => i.id === initialSelectedId) || null : null
   );
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [deletingInvoice, setDeletingInvoice] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
   const [downloadingPdf, setDownloadingPdf] = useState(false);
@@ -76,8 +81,27 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
     }
   };
 
+  const openEditInvoice = (invoice: Invoice) => {
+    setEditingInvoice(invoice); setCustomerSource('manual');
+    setManualCustomer({ fullName: invoice.customerName, businessName: invoice.customerBusinessName || '', phone: invoice.customerPhone || '', email: invoice.customerEmail || '', businessAddress: invoice.customerAddress || '' });
+    setCustomerId(''); setLeadId(''); setProjectId(''); setIssueDate(invoice.issueDate); setDueDate(invoice.dueDate);
+    setAmountPaid(String(invoice.amountPaid)); setNotes(invoice.notes || ''); setItems(invoice.items.map((item) => ({ ...item })));
+    setFormError(''); setShowCreateModal(true);
+  };
+
+  const handleDeleteInvoice = async () => {
+    if (!selectedInvoice || !isSuperAdmin) return;
+    if (payments.some((payment) => payment.invoiceId === selectedInvoice.id)) { setFormError('This invoice has linked payment records and cannot be deleted. Keep it for the financial audit trail.'); return; }
+    if (!window.confirm(`Delete invoice ${selectedInvoice.invoiceNumber}? This cannot be undone.`)) return;
+    setDeletingInvoice(true);
+    try { await deleteInvoice(selectedInvoice.id); setSelectedInvoice(null); setFormError(''); }
+    catch (error) { setFormError(error instanceof Error ? error.message : 'Unable to delete this invoice.'); }
+    finally { setDeletingInvoice(false); }
+  };
+
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (editingInvoice && !isSuperAdmin) { setFormError('Only the Super Admin can edit invoices.'); return; }
     const savedCustomer = customerSource === 'customer' ? customers.find((c) => c.id === customerId) : undefined;
     const selectedLead = customerSource === 'lead' ? leads.find((l) => l.id === leadId) : undefined;
     const invoiceCustomer = savedCustomer
@@ -100,18 +124,15 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
     setFormError('');
     setSaving(true);
     try {
-      const created = await createInvoice({
-        customer: invoiceCustomer,
-        project,
-        issueDate,
-        dueDate,
-        items: validItems,
-        amountPaid: Number(amountPaid || 0),
-        notes,
-      });
-      if (!created?.id) throw new Error('The invoice could not be confirmed as saved. Please check Issued Invoices before trying again.');
-      setSelectedInvoice(created);
-      setShowCreateModal(false);
+      if (editingInvoice) {
+        const updated = await updateInvoice(editingInvoice.id, { customer: invoiceCustomer, issueDate, dueDate, items: validItems, notes });
+        setSelectedInvoice(updated);
+      } else {
+        const created = await createInvoice({ customer: invoiceCustomer, project, issueDate, dueDate, items: validItems, amountPaid: Number(amountPaid || 0), notes });
+        if (!created?.id) throw new Error('The invoice could not be confirmed as saved. Please check Issued Invoices before trying again.');
+        setSelectedInvoice(created);
+      }
+      setEditingInvoice(null); setShowCreateModal(false);
     } catch (error) {
       let message = error instanceof Error ? error.message : String(error);
       try {
@@ -197,6 +218,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
         </div>
         <button
           onClick={() => {
+            setEditingInvoice(null);
             setFormError('');
             setCustomerSource(customers.length ? 'customer' : leads.length ? 'lead' : 'manual');
             setCustomerId(customers[0]?.id || '');
@@ -212,7 +234,8 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {formError && !showCreateModal && <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 no-print">{formError}</div>}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-w-0">
         {/* Invoice List */}
         <div className={`lg:col-span-4 bg-white border border-slate-200 rounded-xl overflow-hidden no-print ${selectedInvoice ? 'hidden lg:block' : 'block'}`}>
           <div className="px-4 py-3.5 border-b border-slate-200">
@@ -278,6 +301,10 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                   {selectedInvoice.invoiceNumber}
                 </span>
                 <div className="flex flex-wrap items-center gap-2">
+                  {isSuperAdmin && <>
+                    <button onClick={() => openEditInvoice(selectedInvoice)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold"><Pencil className="w-3.5 h-3.5" /><span>Edit</span></button>
+                    <button onClick={handleDeleteInvoice} disabled={deletingInvoice} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-200 text-red-700 text-xs font-semibold disabled:opacity-50"><Trash2 className="w-3.5 h-3.5" /><span>{deletingInvoice ? 'Deleting...' : 'Delete'}</span></button>
+                  </>}
                   <button
                     onClick={handleDownloadPdf}
                     disabled={downloadingPdf}
@@ -313,7 +340,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
               {/* Official A4 Corporate Invoice Sheet */}
               <div
                 ref={invoiceSheetRef}
-                className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm print-only-sheet"
+                className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm print-only-sheet w-full min-w-0"
               >
                 {/* Top Corporate Royal Blue Header */}
                 <div className="bg-[#0144D8] px-6 sm:px-8 py-5 sm:py-6 text-white flex flex-row items-center justify-between gap-4">
@@ -325,7 +352,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                   </div>
                 </div>
 
-                <div className="p-8 space-y-8">
+                <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 min-w-0">
                   {/* Company & Client Metadata Grid */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pb-6 border-b border-slate-200">
                     <div>
@@ -339,7 +366,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                           Client ID: {selectedInvoice.customerCode}
                         </p>
                       )}
-                      <p className="text-xs text-slate-600 mt-1">{selectedInvoice.customerEmail}</p>
+                      <p className="text-xs text-slate-600 mt-1 break-all">{selectedInvoice.customerEmail}</p>
                       {selectedInvoice.customerPhone && (
                         <p className="text-xs text-slate-600">{selectedInvoice.customerPhone}</p>
                       )}
@@ -352,7 +379,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                       <p className="text-[11px] uppercase tracking-wider font-bold text-[#0144D8]">Issued By</p>
                       <p className="text-sm font-bold text-slate-900">{settings.companyName}</p>
                       <p className="text-slate-600">{settings.companyAddress}</p>
-                      <p className="text-slate-600">{settings.companyEmail} · {settings.companyPhone}</p>
+                      <p className="text-slate-600 break-all">{settings.companyEmail} · {settings.companyPhone}</p>
                       <div className="pt-3 space-y-1 font-mono-tabular">
                         <p className="text-slate-600">
                           Issue Date: <span className="font-semibold text-slate-900">{formatDate(selectedInvoice.issueDate)}</span>
@@ -371,7 +398,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
 
                   {/* Line Items Table */}
                   <div>
-                    <table className="w-full text-left border-collapse">
+                    <table className="hidden sm:table w-full table-fixed text-left border-collapse">
                       <thead>
                         <tr className="border-b-2 border-[#0144D8] text-[11px] uppercase tracking-wider font-bold text-[#0144D8]">
                           <th className="py-3 pr-4">Service / Description</th>
@@ -395,6 +422,16 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                         ))}
                       </tbody>
                     </table>
+                    <div className="sm:hidden space-y-3">
+                      {selectedInvoice.items.map((item, idx) => <div key={idx} className="rounded-lg border border-slate-200 p-3 text-xs space-y-2">
+                        <p className="font-semibold text-slate-900 break-words">{item.description}</p>
+                        <div className="grid grid-cols-3 gap-2 text-slate-600">
+                          <div><span className="block text-[10px] text-slate-400">Qty</span><span className="font-mono-tabular">{item.quantity}</span></div>
+                          <div><span className="block text-[10px] text-slate-400">Unit Price</span><span className="font-mono-tabular break-all">{formatNaira(item.unitPrice, true)}</span></div>
+                          <div><span className="block text-[10px] text-slate-400">Amount</span><span className="font-mono-tabular font-bold text-slate-900 break-all">{formatNaira(item.total, true)}</span></div>
+                        </div>
+                      </div>)}
+                    </div>
                   </div>
 
                   {/* Totals Summary */}
@@ -454,7 +491,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                 </div>
 
                 {/* Official Footer */}
-                <div className="px-8 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-500">
+                <div className="px-4 sm:px-8 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-slate-500 break-words">
                   <span>{settings.companyName} · "{settings.tagline}"</span>
                   <span>{settings.companyEmail} · Official Corporate Invoice</span>
                 </div>
@@ -469,13 +506,14 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 no-print">
           <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <h3 className="text-base font-bold text-slate-900">Generate Corporate Invoice</h3>
-              <button onClick={() => setShowCreateModal(false)} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100">
+              <h3 className="text-base font-bold text-slate-900">{editingInvoice ? 'Edit Corporate Invoice' : 'Generate Corporate Invoice'}</h3>
+              <button onClick={() => { setShowCreateModal(false); setEditingInvoice(null); }} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={handleCreateInvoice} className="mt-4 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {editingInvoice ? <div className="sm:col-span-2 rounded-lg bg-blue-50 p-3 text-xs text-blue-800">Editing {editingInvoice.invoiceNumber}. Amount already paid is locked to protect payment records.</div> : <>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Customer Details Source *</label>
                   <select
@@ -508,7 +546,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                     {leads.find((lead) => lead.id === leadId) && <p className="mt-1 text-xs text-slate-500">Contact details will be copied from the selected lead into this invoice.</p>}
                   </div>
                 )}
-                {customerSource === 'manual' && (
+                {!editingInvoice && customerSource === 'manual' && (
                   <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <label className="text-xs font-semibold text-slate-700">Contact Name *<input required value={manualCustomer.fullName} onChange={(e) => setManualCustomer((v) => ({ ...v, fullName: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal" /></label>
                     <label className="text-xs font-semibold text-slate-700">Business Name<input value={manualCustomer.businessName} onChange={(e) => setManualCustomer((v) => ({ ...v, businessName: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal" /></label>
@@ -517,7 +555,15 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                     <label className="sm:col-span-2 text-xs font-semibold text-slate-700">Business Address<input value={manualCustomer.businessAddress} onChange={(e) => setManualCustomer((v) => ({ ...v, businessAddress: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal" /></label>
                   </div>
                 )}
-                {customerSource === 'customer' && (
+                </>}
+                {editingInvoice && <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <label className="text-xs font-semibold text-slate-700">Contact Name *<input required value={manualCustomer.fullName} onChange={(e) => setManualCustomer((x) => ({ ...x, fullName: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal" /></label>
+                  <label className="text-xs font-semibold text-slate-700">Business Name<input value={manualCustomer.businessName} onChange={(e) => setManualCustomer((x) => ({ ...x, businessName: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal" /></label>
+                  <label className="text-xs font-semibold text-slate-700">Phone / WhatsApp *<input required value={manualCustomer.phone} onChange={(e) => setManualCustomer((x) => ({ ...x, phone: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal" /></label>
+                  <label className="text-xs font-semibold text-slate-700">Email<input type="email" value={manualCustomer.email} onChange={(e) => setManualCustomer((x) => ({ ...x, email: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal" /></label>
+                  <label className="sm:col-span-2 text-xs font-semibold text-slate-700">Business Address<input value={manualCustomer.businessAddress} onChange={(e) => setManualCustomer((x) => ({ ...x, businessAddress: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal" /></label>
+                </div>}
+                {customerSource === 'customer' && !editingInvoice && (
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">Linked Project (Optional)</label>
                     <select value={projectId} onChange={(e) => handleProjectSelect(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
@@ -607,8 +653,9 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                     type="number"
                     min={0}
                     value={amountPaid}
+                    disabled={Boolean(editingInvoice)}
                     onChange={(e) => setAmountPaid(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono-tabular"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono-tabular disabled:bg-slate-100"
                   />
                 </div>
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 flex flex-col justify-center">
@@ -641,7 +688,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={() => { setShowCreateModal(false); setEditingInvoice(null); }}
                   className="px-4 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700"
                 >
                   Cancel
@@ -651,7 +698,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                   disabled={saving}
                   className="px-5 py-2 rounded-lg bg-[#0144D8] text-white text-xs font-semibold hover:bg-[#0133A6] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {saving ? 'Issuing Invoice...' : 'Issue Invoice'}
+                  {saving ? (editingInvoice ? 'Saving Changes...' : 'Issuing Invoice...') : (editingInvoice ? 'Save Changes' : 'Issue Invoice')}
                 </button>
               </div>
             </form>
