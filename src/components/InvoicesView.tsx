@@ -18,7 +18,7 @@ import { Invoice, InvoiceLineItem } from '../types/visibyl';
 import { formatDate, formatNaira, todayISO } from '../utils/formatters';
 
 export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ initialSelectedId }) => {
-  const { customers, projects, projectFinancials, invoices, settings, createInvoice } = useData();
+  const { customers, projects, projectFinancials, invoices, leads, settings, createInvoice } = useData();
 
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(() =>
     initialSelectedId ? invoices.find((i) => i.id === initialSelectedId) || null : invoices[0] || null
@@ -28,7 +28,10 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const invoiceSheetRef = useRef<HTMLDivElement>(null);
 
+  const [customerSource, setCustomerSource] = useState<'customer' | 'lead' | 'manual'>('customer');
   const [customerId, setCustomerId] = useState('');
+  const [leadId, setLeadId] = useState('');
+  const [manualCustomer, setManualCustomer] = useState({ fullName: '', businessName: '', phone: '', email: '', businessAddress: '' });
   const [projectId, setProjectId] = useState('');
   const [issueDate, setIssueDate] = useState(todayISO());
   const [dueDate, setDueDate] = useState(() => {
@@ -74,13 +77,21 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
 
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
-    const customer = customers.find((c) => c.id === customerId);
-    if (!customer) return;
-    const project = projects.find((p) => p.id === projectId);
+    const savedCustomer = customerSource === 'customer' ? customers.find((c) => c.id === customerId) : undefined;
+    const selectedLead = customerSource === 'lead' ? leads.find((l) => l.id === leadId) : undefined;
+    const invoiceCustomer = savedCustomer
+      ? { id: savedCustomer.id, customerCode: savedCustomer.customerCode, fullName: savedCustomer.fullName, businessName: savedCustomer.businessName, phone: savedCustomer.phone, email: savedCustomer.email, businessAddress: savedCustomer.businessAddress, salesRepUid: savedCustomer.salesRepUid }
+      : selectedLead
+        ? { id: '', fullName: selectedLead.fullName, businessName: selectedLead.businessName, phone: selectedLead.phone, email: selectedLead.email, businessAddress: '', salesRepUid: selectedLead.submittedByUid }
+        : customerSource === 'manual'
+          ? { id: '', ...manualCustomer, salesRepUid: '' }
+          : undefined;
+    if (!invoiceCustomer?.fullName.trim() || !invoiceCustomer.phone.trim()) return;
+    const project = customerSource === 'customer' ? projects.find((p) => p.id === projectId) : undefined;
     setSaving(true);
     try {
       const created = await createInvoice({
-        customer,
+        customer: invoiceCustomer,
         project,
         issueDate,
         dueDate,
@@ -166,7 +177,11 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
         </div>
         <button
           onClick={() => {
+            setCustomerSource(customers.length ? 'customer' : leads.length ? 'lead' : 'manual');
             setCustomerId(customers[0]?.id || '');
+            setLeadId('');
+            setProjectId('');
+            setManualCustomer({ fullName: '', businessName: '', phone: '', email: '', businessAddress: '' });
             setShowCreateModal(true);
           }}
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#0144D8] text-white text-xs font-semibold hover:bg-[#0133A6] whitespace-nowrap self-start"
@@ -439,39 +454,56 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
             </div>
             <form onSubmit={handleCreateInvoice} className="mt-4 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Customer *</label>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Customer Details Source *</label>
                   <select
-                    required
-                    value={customerId}
-                    onChange={(e) => setCustomerId(e.target.value)}
+                    value={customerSource}
+                    onChange={(e) => { setCustomerSource(e.target.value as 'customer' | 'lead' | 'manual'); setProjectId(''); }}
                     className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
                   >
-                    <option value="">Select customer...</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.businessName} ({c.customerCode})
-                      </option>
-                    ))}
+                    <option value="customer">Choose Existing Customer</option>
+                    <option value="lead">Get Details from Leads</option>
+                    <option value="manual">Enter Customer Details Manually</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Linked Project (Optional)</label>
-                  <select
-                    value={projectId}
-                    onChange={(e) => handleProjectSelect(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
-                  >
-                    <option value="">None</option>
-                    {projects
-                      .filter((p) => !customerId || p.customerId === customerId)
-                      .map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.projectCode} — {p.title}
-                        </option>
-                      ))}
-                  </select>
-                </div>
+                {customerSource === 'customer' && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Customer *</label>
+                    <select required value={customerId} onChange={(e) => { setCustomerId(e.target.value); setProjectId(''); }} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+                      <option value="">Select customer...</option>
+                      {customers.map((c) => <option key={c.id} value={c.id}>{c.businessName || c.fullName} ({c.customerCode})</option>)}
+                    </select>
+                  </div>
+                )}
+                {customerSource === 'lead' && (
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Select Lead *</label>
+                    <select required value={leadId} onChange={(e) => setLeadId(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+                      <option value="">Choose a lead...</option>
+                      {leads.map((lead) => <option key={lead.id} value={lead.id}>{lead.fullName}{lead.businessName ? ' — ' + lead.businessName : ''} · {lead.phone}</option>)}
+                    </select>
+                    {leads.length === 0 && <p className="mt-1 text-xs text-amber-700">No leads are available to select.</p>}
+                    {leads.find((lead) => lead.id === leadId) && <p className="mt-1 text-xs text-slate-500">Contact details will be copied from the selected lead into this invoice.</p>}
+                  </div>
+                )}
+                {customerSource === 'manual' && (
+                  <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3.5 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <label className="text-xs font-semibold text-slate-700">Contact Name *<input required value={manualCustomer.fullName} onChange={(e) => setManualCustomer((v) => ({ ...v, fullName: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-700">Business Name<input value={manualCustomer.businessName} onChange={(e) => setManualCustomer((v) => ({ ...v, businessName: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-700">Phone / WhatsApp *<input required value={manualCustomer.phone} onChange={(e) => setManualCustomer((v) => ({ ...v, phone: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal" /></label>
+                    <label className="text-xs font-semibold text-slate-700">Email<input type="email" value={manualCustomer.email} onChange={(e) => setManualCustomer((v) => ({ ...v, email: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal" /></label>
+                    <label className="sm:col-span-2 text-xs font-semibold text-slate-700">Business Address<input value={manualCustomer.businessAddress} onChange={(e) => setManualCustomer((v) => ({ ...v, businessAddress: e.target.value }))} className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-normal" /></label>
+                  </div>
+                )}
+                {customerSource === 'customer' && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Linked Project (Optional)</label>
+                    <select value={projectId} onChange={(e) => handleProjectSelect(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white">
+                      <option value="">None</option>
+                      {projects.filter((p) => !customerId || p.customerId === customerId).map((p) => <option key={p.id} value={p.id}>{p.projectCode} — {p.title}</option>)}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Invoice Date *</label>
                   <input
