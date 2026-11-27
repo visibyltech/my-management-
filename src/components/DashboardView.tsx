@@ -39,6 +39,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     customers,
     projects,
     projectFinancials,
+    invoices,
     onboardingForms,
     payments,
     expenses,
@@ -84,6 +85,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
     });
     return () => unsub();
   }, [selectedDevProject]);
+
+  // Customer balances use one authoritative source per customer to avoid counting the same
+  // project twice through both project financials and its invoices.
+  const customerBalances = useMemo(() => {
+    return customers.map((customer) => {
+      const customerProjects = projects.filter((project) => project.customerId === customer.id);
+      const customerInvoices = invoices.filter((invoice) => invoice.customerId === customer.id);
+      let agreedAmount = 0;
+      let amountPaid = 0;
+      let outstandingBalance = 0;
+      let sourceCount = 0;
+
+      if (customerProjects.length > 0) {
+        customerProjects.forEach((project) => {
+          const financial = projectFinancials.get(project.id);
+          if (!financial) return;
+          agreedAmount += Number(financial.agreedPrice || 0);
+          amountPaid += Number(financial.totalPaid || 0);
+          outstandingBalance += Math.max(0, Number(financial.outstandingBalance || 0));
+          sourceCount += 1;
+        });
+      } else if (customerInvoices.length > 0) {
+        customerInvoices.forEach((invoice) => {
+          agreedAmount += Number(invoice.totalAmount || 0);
+          amountPaid += Number(invoice.amountPaid || 0);
+          outstandingBalance += Math.max(0, Number(invoice.outstandingBalance || 0));
+          sourceCount += 1;
+        });
+      } else {
+        agreedAmount = Number(customer.agreedProjectAmount || 0);
+        amountPaid = Number(customer.amountPaid || 0);
+        outstandingBalance = Math.max(
+          0,
+          Number(customer.outstandingBalance ?? (agreedAmount - amountPaid) ?? 0)
+        );
+        sourceCount = agreedAmount > 0 || amountPaid > 0 || outstandingBalance > 0 ? 1 : 0;
+      }
+
+      return {
+        customer,
+        agreedAmount,
+        amountPaid,
+        outstandingBalance,
+        sourceCount,
+      };
+    }).filter((row) => row.outstandingBalance > 0)
+      .sort((a, b) => b.outstandingBalance - a.outstandingBalance);
+  }, [customers, projects, projectFinancials, invoices]);
 
   // Financial & Operational Aggregations (Strict: only confirmed payments count toward revenue)
   const metrics = useMemo(() => {
@@ -136,10 +185,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       .filter((e) => isWithinTimeframe(e.expenseDate || e.createdAt, timeframe))
       .reduce((sum, e) => sum + Number(e.amount || 0), 0);
 
-    let totalOutstanding = 0;
-    projectFinancials.forEach((fin) => {
-      totalOutstanding += Number(fin.outstandingBalance || 0);
-    });
+    const totalOutstanding = customerBalances.reduce(
+      (sum, row) => sum + row.outstandingBalance,
+      0
+    );
 
     const activeStaffCount = staffPublic.filter((s) => s.employmentStatus === 'active').length;
 
@@ -158,7 +207,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
       pendingVerificationCount: pendingPayments.length,
       pendingVerificationAmount: pendingPayments.reduce((s, p) => s + p.amount, 0),
     };
-  }, [customers, projects, projectFinancials, payments, expenses, staffPublic, timeframe]);
+  }, [customers, projects, projectFinancials, customerBalances, payments, expenses, staffPublic, timeframe]);
 
   const approachingDeadlines = useMemo(() => {
     return projects
@@ -652,6 +701,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           </>
         )}
       </div>
+
+      {/* Customer Outstanding Balance Register — reconciled to existing records */}
+      <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Customer Outstanding Balances</h3>
+            <p className="text-xs text-slate-500 mt-1">Live balances from project financials, invoices, or legacy customer records — without double-counting linked records.</p>
+          </div>
+          <div className="text-left sm:text-right">
+            <p className="text-[10px] uppercase tracking-wide text-slate-500">Total outstanding</p>
+            <p className="text-lg font-bold font-mono-tabular text-amber-700">{formatNaira(metrics.totalOutstanding)}</p>
+          </div>
+        </div>
+        {customerBalances.length === 0 ? (
+          <div className="px-5 py-8 text-center">
+            <p className="text-sm font-semibold text-slate-700">No outstanding customer balances</p>
+            <p className="text-xs text-slate-500 mt-1">Customers with unpaid recorded amounts will appear here automatically.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 text-[11px] font-semibold text-slate-500">
+                  <th className="py-3 px-5">Customer</th>
+                  <th className="py-3 px-4 text-right">Agreed / Invoiced</th>
+                  <th className="py-3 px-4 text-right">Confirmed Paid</th>
+                  <th className="py-3 px-5 text-right">Outstanding</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {customerBalances.map(({ customer, agreedAmount, amountPaid, outstandingBalance, sourceCount }) => (
+                  <tr key={customer.id} className="hover:bg-slate-50/70">
+                    <td className="py-3 px-5">
+                      <button onClick={() => onNavigate('customers')} className="text-left">
+                        <p className="font-semibold text-slate-900 hover:text-[#0144D8]">{customer.businessName || customer.fullName}</p>
+                        <p className="text-[11px] text-slate-500">{customer.customerCode} · {sourceCount} financial record{sourceCount === 1 ? '' : 's'}</p>
+                      </button>
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono-tabular text-slate-700">{formatNaira(agreedAmount)}</td>
+                    <td className="py-3 px-4 text-right font-mono-tabular text-emerald-700">{formatNaira(amountPaid)}</td>
+                    <td className="py-3 px-5 text-right font-bold font-mono-tabular text-amber-700">{formatNaira(outstandingBalance)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {/* Operational Counts Strip */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
