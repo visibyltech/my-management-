@@ -21,6 +21,8 @@ import {
   Expense,
   Invoice,
   InvoiceLineItem,
+  Lead,
+  SalesReport,
   OnboardingForm,
   Payment,
   Project,
@@ -83,6 +85,8 @@ interface DataContextValue {
   staffInvites: StaffInvite[];
   notifications: AppNotification[];
   activityLogs: ActivityLog[];
+  leads: Lead[];
+  salesReports: SalesReport[];
   loadingData: boolean;
 
   // Actions
@@ -105,6 +109,10 @@ interface DataContextValue {
     notes?: string;
   }) => Promise<Customer>;
   updateCustomer: (customerId: string, updates: Partial<Customer>) => Promise<void>;
+  createLead: (input: Omit<Lead,'id'|'submittedByUid'|'submittedByName'|'status'|'adminNotes'|'createdAt'|'updatedAt'>) => Promise<Lead>;
+  updateLead: (leadId: string, updates: { status: Lead['status']; adminNotes: string }) => Promise<void>;
+  createSalesReport: (input: Omit<SalesReport,'id'|'submittedByUid'|'submittedByName'|'reviewStatus'|'adminFeedback'|'reviewedByUid'|'reviewedAt'|'createdAt'|'updatedAt'>) => Promise<SalesReport>;
+  reviewSalesReport: (reportId: string, adminFeedback: string) => Promise<void>;
 
   createProject: (input: {
     title: string;
@@ -262,6 +270,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [staffInvites, setStaffInvites] = useState<StaffInvite[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [salesReports, setSalesReports] = useState<SalesReport[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
@@ -280,6 +290,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setStaffInvites([]);
       setNotifications([]);
       setActivityLogs([]);
+      setLeads([]);
+      setSalesReports([]);
       setLoadingData(false);
       return;
     }
@@ -344,6 +356,13 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         (err) => handleFirestoreError(err, OperationType.LIST, 'staffPublic')
       )
     );
+
+    if (isSuperAdmin || isSales) {
+      const leadsQuery = isSuperAdmin ? collection(db, 'leads') : query(collection(db, 'leads'), where('submittedByUid', '==', uid));
+      unsubs.push(onSnapshot(leadsQuery, (snap) => setLeads(snap.docs.map((d) => d.data() as Lead).sort((a,b) => b.createdAt.localeCompare(a.createdAt))), (err) => handleFirestoreError(err, OperationType.LIST, 'leads')));
+      const reportsQuery = isSuperAdmin ? collection(db, 'salesReports') : query(collection(db, 'salesReports'), where('submittedByUid', '==', uid));
+      unsubs.push(onSnapshot(reportsQuery, (snap) => setSalesReports(snap.docs.map((d) => d.data() as SalesReport).sort((a,b) => b.createdAt.localeCompare(a.createdAt))), (err) => handleFirestoreError(err, OperationType.LIST, 'salesReports')));
+    }
 
     // Notifications
     const notifQuery = isAdmin
@@ -587,6 +606,35 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createdAt: now,
       });
     }
+  };
+
+  const createLead: DataContextValue['createLead'] = async (input) => {
+    if (!isSales && !isSuperAdmin) throw new Error('Only Sales staff can submit leads.');
+    const now = new Date().toISOString(); const id = makeDocId('LED');
+    const lead: Lead = { id, fullName: input.fullName.trim(), businessName: input.businessName.trim(), phone: input.phone.trim(), email: input.email.trim().toLowerCase(), businessType: input.businessType.trim(), serviceInterest: input.serviceInterest.trim(), notes: input.notes.trim(), submittedByUid: actorUid, submittedByName: actorName, status: 'New', adminNotes: '', createdAt: now, updatedAt: now };
+    try { const batch = writeBatch(db); batch.set(doc(db, 'leads', id), lead); await batch.commit(); return lead; }
+    catch (error) { handleFirestoreError(error, OperationType.CREATE, 'leads/' + id); }
+  };
+
+  const updateLead: DataContextValue['updateLead'] = async (leadId, updates) => {
+    if (!isSuperAdmin) throw new Error('Only the Super Admin can manage leads.');
+    try { await updateDoc(doc(db, 'leads', leadId), { status: updates.status, adminNotes: updates.adminNotes.trim(), updatedAt: new Date().toISOString() }); }
+    catch (error) { handleFirestoreError(error, OperationType.UPDATE, 'leads/' + leadId); }
+  };
+
+  const createSalesReport: DataContextValue['createSalesReport'] = async (input) => {
+    if (!isSales) throw new Error('Only Sales staff can submit weekly sales reports.');
+    const now = new Date().toISOString(); const id = makeDocId('SREP');
+    const report: SalesReport = { id, ...input, submittedByUid: actorUid, submittedByName: actorName, reviewStatus: 'submitted', adminFeedback: '', createdAt: now, updatedAt: now };
+    try { const batch = writeBatch(db); batch.set(doc(db, 'salesReports', id), report); await batch.commit(); return report; }
+    catch (error) { handleFirestoreError(error, OperationType.CREATE, 'salesReports/' + id); }
+  };
+
+  const reviewSalesReport: DataContextValue['reviewSalesReport'] = async (reportId, adminFeedback) => {
+    if (!isSuperAdmin) throw new Error('Only the Super Admin can review sales reports.');
+    const now = new Date().toISOString();
+    try { await updateDoc(doc(db, 'salesReports', reportId), { reviewStatus: 'reviewed', adminFeedback: adminFeedback.trim(), reviewedByUid: actorUid, reviewedAt: now, updatedAt: now }); }
+    catch (error) { handleFirestoreError(error, OperationType.UPDATE, 'salesReports/' + reportId); }
   };
 
   const createCustomer: DataContextValue['createCustomer'] = async (input) => {
@@ -1548,9 +1596,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         staffInvites,
         notifications,
         activityLogs,
+        leads,
+        salesReports,
         loadingData,
         createCustomer,
         updateCustomer,
+        createLead,
+        updateLead,
+        createSalesReport,
+        reviewSalesReport,
         createProject,
         updateProjectAdmin,
         updateProjectDeveloper,

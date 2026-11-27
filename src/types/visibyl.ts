@@ -23,6 +23,8 @@ export type NavSection =
   | 'commissions'
   | 'expenses'
   | 'reports'
+  | 'leads'
+  | 'salesReports'
   | 'settings';
 
 export interface CompanySettings {
@@ -314,6 +316,9 @@ export interface AppNotification {
   createdByUid: string;
   createdAt: string;
 }
+
+export interface Lead { id:string; fullName:string; businessName:string; phone:string; email:string; businessType:string; serviceInterest:string; notes:string; submittedByUid:string; submittedByName:string; status:'New'|'Contacted'|'Qualified'|'Converted'|'Not Interested'; adminNotes:string; createdAt:string; updatedAt:string; }
+export interface SalesReport { id:string; weekStart:string; weekEnd:string; activities:string; achievements:string; leadsGenerated:number; callsMade:number; meetingsHeld:number; salesClosed:number; challenges:string; opportunities:string; attachmentUrl?:string; attachmentName?:string; submittedByUid:string; submittedByName:string; reviewStatus:'submitted'|'reviewed'; adminFeedback:string; reviewedByUid?:string; reviewedAt?:string; }
 
 export interface ActivityLog {
   id: string;

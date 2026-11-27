@@ -15,6 +15,8 @@ import {
   Search,
   Settings,
   Users,
+  Target,
+  ClipboardList,
   UserSquare2,
   X,
 } from 'lucide-react';
@@ -70,6 +72,10 @@ export const Layout: React.FC<LayoutProps> = ({
     if (isSuperAdmin) {
       items.push({ id: 'staff', label: 'Staff', icon: UserSquare2 });
     }
+    if (isSuperAdmin || isSales) {
+      items.push({ id: 'leads', label: 'Leads', icon: Target });
+      items.push({ id: 'salesReports', label: 'Weekly Sales Reports', icon: ClipboardList });
+    }
 
     items.push({ id: 'projects', label: 'Projects', icon: Briefcase });
     items.push({ id: 'onboarding', label: 'Onboarding', icon: FileCheck2 });
@@ -96,7 +102,8 @@ export const Layout: React.FC<LayoutProps> = ({
     const rawQuery = searchQuery.trim();
     if (rawQuery.length < 2) return null;
     const q = rawQuery.toLocaleLowerCase();
-    const digitsQuery = rawQuery.replace(/\\D/g, '');
+    const digitsQuery = rawQuery.replace(/\D/g, '');
+    const normalizedQuery = rawQuery.replace(/[^a-z0-9]/gi, '').toLowerCase();
 
     const matchedCustomers = isDeveloper
       ? []
@@ -106,8 +113,8 @@ export const Layout: React.FC<LayoutProps> = ({
             const textMatch = textFields.some((value) =>
               String(value ?? '').toLocaleLowerCase().includes(q)
             );
-            const accountDigits = String(c.accountNumber ?? '').replace(/\\D/g, '');
-            const codeDigits = String(c.customerCode ?? '').replace(/\\D/g, '');
+            const accountDigits = String(c.accountNumber ?? '').replace(/\D/g, '');
+            const codeDigits = String(c.customerCode ?? '').replace(/\D/g, '');
             const numericMatch = digitsQuery.length >= 2 &&
               (accountDigits.includes(digitsQuery) || codeDigits.includes(digitsQuery));
             return textMatch || numericMatch;
@@ -146,14 +153,11 @@ export const Layout: React.FC<LayoutProps> = ({
           )
           .slice(0, 4);
 
-    const matchedStaff = staffPublic
-      .filter(
-        (s) =>
-          s.fullName.toLowerCase().includes(q) ||
-          s.staffCode.toLowerCase().includes(q) ||
-          s.department.toLowerCase().includes(q)
-      )
-      .slice(0, 4);
+    const matchedStaff = isSuperAdmin ? staffPublic.filter((s) => {
+      const code = String(s.staffCode || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+      const digits = String(s.staffCode || '').replace(/\D/g, '');
+      return s.fullName.toLowerCase().includes(q) || s.staffCode.toLowerCase().includes(q) || s.department.toLowerCase().includes(q) || (normalizedQuery.length >= 2 && code.includes(normalizedQuery)) || (digitsQuery.length >= 2 && digits.includes(digitsQuery));
+    }).slice(0, 5) : [];
 
     return {
       customers: matchedCustomers,
@@ -162,7 +166,7 @@ export const Layout: React.FC<LayoutProps> = ({
       payments: matchedPayments,
       staff: matchedStaff,
     };
-  }, [searchQuery, customers, projects, invoices, payments, staffPublic, isDeveloper]);
+  }, [searchQuery, customers, projects, invoices, payments, staffPublic, isDeveloper, isSuperAdmin]);
 
   const mobilePrimaryTabs = navItems.slice(0, 4);
 
@@ -242,7 +246,7 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
 
           {/* Universal Search Bar */}
-          <div className="relative flex-1 max-w-md hidden sm:block">
+          <div className="relative flex-1 min-w-0 max-w-md">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               value={searchQuery}
@@ -251,7 +255,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 setSearchQuery(e.target.value);
                 setSearchOpen(true);
               }}
-              placeholder="Search customer, ID, account no, project, invoice..."
+              placeholder="Search customer, account no., staff ID..."
               className="w-full pl-9 pr-8 py-2 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#0144D8]"
             />
             {searchQuery && (
@@ -345,7 +349,8 @@ export const Layout: React.FC<LayoutProps> = ({
                         key={st.uid}
                         onClick={() => {
                           setSearchOpen(false);
-                          onSelectSection(isAdmin || isFinance ? 'staff' : 'projects');
+                          setSearchQuery('');
+                          onQuickJump ? onQuickJump('staff', st.uid) : onSelectSection('staff');
                         }}
                         className="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center justify-between gap-2"
                       >

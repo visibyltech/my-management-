@@ -488,6 +488,44 @@ service cloud.firestore {
         data.updatedAt is string && data.updatedAt.size() <= 64;
     }
 
+    function isValidLead(data) {
+      return data.keys().hasAll(['id','fullName','phone','submittedByUid','submittedByName','status','createdAt','updatedAt']) &&
+        data.keys().hasOnly(['id','fullName','businessName','phone','email','businessType','serviceInterest','notes','submittedByUid','submittedByName','status','adminNotes','createdAt','updatedAt']) &&
+        isValidId(data.id) && data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 120 &&
+        (!('businessName' in data) || (data.businessName is string && data.businessName.size() <= 160)) &&
+        data.phone is string && data.phone.size() >= 5 && data.phone.size() <= 40 &&
+        (!('email' in data) || (data.email is string && data.email.size() <= 160)) &&
+        (!('businessType' in data) || (data.businessType is string && data.businessType.size() <= 120)) &&
+        (!('serviceInterest' in data) || (data.serviceInterest is string && data.serviceInterest.size() <= 160)) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 4000)) &&
+        data.submittedByUid is string && data.submittedByUid.size() <= 128 && data.submittedByName is string && data.submittedByName.size() <= 120 &&
+        data.status in ['New','Contacted','Qualified','Converted','Not Interested'] &&
+        (!('adminNotes' in data) || (data.adminNotes is string && data.adminNotes.size() <= 4000)) &&
+        data.createdAt is string && data.createdAt.size() <= 64 && data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidSalesReport(data) {
+      return data.keys().hasAll(['id','weekStart','weekEnd','activities','submittedByUid','submittedByName','reviewStatus','createdAt','updatedAt']) &&
+        data.keys().hasOnly(['id','weekStart','weekEnd','activities','achievements','leadsGenerated','callsMade','meetingsHeld','salesClosed','challenges','opportunities','attachmentUrl','attachmentName','submittedByUid','submittedByName','reviewStatus','adminFeedback','reviewedByUid','reviewedAt','createdAt','updatedAt']) &&
+        isValidId(data.id) && data.weekStart is string && data.weekStart.size() <= 40 && data.weekEnd is string && data.weekEnd.size() <= 40 &&
+        data.activities is string && data.activities.size() >= 2 && data.activities.size() <= 5000 &&
+        (!('achievements' in data) || (data.achievements is string && data.achievements.size() <= 4000)) &&
+        (!('leadsGenerated' in data) || (data.leadsGenerated is number && data.leadsGenerated >= 0 && data.leadsGenerated <= 100000)) &&
+        (!('callsMade' in data) || (data.callsMade is number && data.callsMade >= 0 && data.callsMade <= 100000)) &&
+        (!('meetingsHeld' in data) || (data.meetingsHeld is number && data.meetingsHeld >= 0 && data.meetingsHeld <= 100000)) &&
+        (!('salesClosed' in data) || (data.salesClosed is number && data.salesClosed >= 0 && data.salesClosed <= 100000)) &&
+        (!('challenges' in data) || (data.challenges is string && data.challenges.size() <= 4000)) &&
+        (!('opportunities' in data) || (data.opportunities is string && data.opportunities.size() <= 4000)) &&
+        (!('attachmentUrl' in data) || (data.attachmentUrl is string && data.attachmentUrl.size() <= 1200)) &&
+        (!('attachmentName' in data) || (data.attachmentName is string && data.attachmentName.size() <= 200)) &&
+        data.submittedByUid is string && data.submittedByUid.size() <= 128 && data.submittedByName is string && data.submittedByName.size() <= 120 &&
+        data.reviewStatus in ['submitted','reviewed'] &&
+        (!('adminFeedback' in data) || (data.adminFeedback is string && data.adminFeedback.size() <= 4000)) &&
+        (!('reviewedByUid' in data) || (data.reviewedByUid is string && data.reviewedByUid.size() <= 128)) &&
+        (!('reviewedAt' in data) || (data.reviewedAt is string && data.reviewedAt.size() <= 64)) &&
+        data.createdAt is string && data.createdAt.size() <= 64 && data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
     function isValidNotification(data) {
       return data.keys().hasAll([
           'id', 'targetRole', 'type', 'title', 'message', 'isRead', 'createdByUid', 'createdAt'
@@ -726,6 +764,22 @@ service cloud.firestore {
       allow get, list: if isSuperAdmin();
       allow create: if isSuperAdmin() && isValidExpense(incoming()) && incoming().id == expenseId && incoming().recordedByUid == request.auth.uid;
       allow update: if isSuperAdmin() && isValidExpense(incoming()) && incoming().id == existing().id;
+      allow delete: if false;
+    }
+
+    match /leads/{leadId} {
+      allow get: if isValidId(leadId) && (isSuperAdmin() || (isSales() && existing().submittedByUid == request.auth.uid));
+      allow list: if isSuperAdmin() || (isSales() && resource.data.submittedByUid == request.auth.uid);
+      allow create: if isValidId(leadId) && (isSuperAdmin() || isSales()) && isValidLead(incoming()) && incoming().id == leadId && incoming().submittedByUid == request.auth.uid && incoming().status == 'New';
+      allow update: if isValidId(leadId) && isSuperAdmin() && isValidLead(incoming()) && incoming().id == existing().id && incoming().submittedByUid == existing().submittedByUid && incoming().createdAt == existing().createdAt && incoming().diff(existing()).affectedKeys().hasOnly(['status','adminNotes','updatedAt']);
+      allow delete: if isValidId(leadId) && isSuperAdmin();
+    }
+
+    match /salesReports/{reportId} {
+      allow get: if isValidId(reportId) && (isSuperAdmin() || (isSales() && existing().submittedByUid == request.auth.uid));
+      allow list: if isSuperAdmin() || (isSales() && resource.data.submittedByUid == request.auth.uid);
+      allow create: if isValidId(reportId) && isSales() && isValidSalesReport(incoming()) && incoming().id == reportId && incoming().submittedByUid == request.auth.uid && incoming().reviewStatus == 'submitted';
+      allow update: if isValidId(reportId) && isSuperAdmin() && isValidSalesReport(incoming()) && incoming().id == existing().id && incoming().submittedByUid == existing().submittedByUid && incoming().createdAt == existing().createdAt && incoming().diff(existing()).affectedKeys().hasOnly(['reviewStatus','adminFeedback','reviewedByUid','reviewedAt','updatedAt']);
       allow delete: if false;
     }
 

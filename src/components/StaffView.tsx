@@ -1,11 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, KeyRound, Plus, ShieldBan, UserCheck, UserPlus, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import { EmploymentStatus, StaffMember, StaffRole } from '../types/visibyl';
 import { formatDate, formatNaira } from '../utils/formatters';
 
-export const StaffView: React.FC = () => {
+interface StaffViewProps { initialSelectedUid?: string | null; }
+export const StaffView: React.FC<StaffViewProps> = ({ initialSelectedUid }) => {
   const { isSuperAdmin } = useAuth();
   const {
     staffMembers,
@@ -87,6 +88,12 @@ export const StaffView: React.FC = () => {
         typeof member.commissionRateOverride === 'number' ? String(member.commissionRateOverride) : '',
     });
   };
+
+  useEffect(() => {
+    if (!initialSelectedUid) return;
+    const selected = staffMembers.find((member) => member.uid === initialSelectedUid);
+    if (selected) openEditStaff(selected);
+  }, [initialSelectedUid, staffMembers]);
 
   const handleUpdateStaff = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -18,6 +18,8 @@ import { PaymentsView } from './components/PaymentsView';
 import { CommissionsView } from './components/CommissionsView';
 import { ExpensesView } from './components/ExpensesView';
 import { ReportsView } from './components/ReportsView';
+import { LeadsView } from './components/LeadsView';
+import { SalesReportsView } from './components/SalesReportsView';
 import { SettingsView } from './components/SettingsView';
 import { NavSection } from './types/visibyl';
 
@@ -125,6 +127,9 @@ const AppContent: React.FC = () => {
         case 'payments':
         case 'reports':
           return isSuperAdmin;
+        case 'leads':
+        case 'salesReports':
+          return isSuperAdmin || isSales;
         case 'commissions':
           return isSuperAdmin || isActiveStaff;
         default:
@@ -219,7 +224,9 @@ const AppContent: React.FC = () => {
             onOpenOnboarding={openOnboardingForm}
           />
         )}
-        {effectiveSection === 'staff' && <StaffView />}
+        {effectiveSection === 'staff' && <StaffView initialSelectedUid={selectedEntityId} />}
+        {effectiveSection === 'leads' && <LeadsView />}
+        {effectiveSection === 'salesReports' && <SalesReportsView />}
         {effectiveSection === 'projects' && (
           <ProjectsView
             key={`projects-${jumpVersion}`}
