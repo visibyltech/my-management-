@@ -732,7 +732,10 @@ service cloud.firestore {
       allow list: if isAdmin() || isFinance() ||
         (isSales() && resource.data.salesRepUid == request.auth.uid) ||
         (isSignedIn() && resource.data.customerEmail == authEmail());
-      allow create: if isValidId(invoiceId) && (isAdmin() || isFinance() || isSales()) && isValidInvoice(incoming()) && incoming().id == invoiceId && incoming().createdByUid == request.auth.uid && (\n        (incoming().customerId == '' && (!('projectId' in incoming()) || incoming().projectId == '')) ||\n        (isValidId(incoming().customerId) && exists(/databases/$(database)/documents/customers/$(incoming().customerId)))\n      );
+      allow create: if isValidId(invoiceId) && (isAdmin() || isFinance() || isSales()) && isValidInvoice(incoming()) && incoming().id == invoiceId && incoming().createdByUid == request.auth.uid && (
+        (incoming().customerId == '' && (!('projectId' in incoming()) || incoming().projectId == '')) ||
+        (isValidId(incoming().customerId) && exists(/databases/$(database)/documents/customers/$(incoming().customerId)))
+      );
       allow update: if isValidId(invoiceId) && isValidInvoice(incoming()) && incoming().id == existing().id && incoming().createdByUid == existing().createdByUid && (isAdmin() || isFinance());
       allow delete: if false;
     }
