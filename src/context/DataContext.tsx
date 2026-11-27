@@ -1127,6 +1127,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const now = new Date().toISOString();
     const totalAmount = input.items.reduce((sum, item) => sum + Number(item.total || 0), 0);
     const amountPaid = existing.amountPaid;
+    if (totalAmount < amountPaid) throw new Error('The invoice total cannot be lower than the amount already paid.');
     const outstandingBalance = Math.max(0, totalAmount - amountPaid);
     const status: Invoice['status'] = outstandingBalance <= 0 ? 'Paid' : amountPaid > 0 ? 'Partially Paid' : input.dueDate < todayISO() ? 'Overdue' : 'Unpaid';
     const updated: Invoice = {
