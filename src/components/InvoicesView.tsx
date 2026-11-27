@@ -218,6 +218,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
         </div>
         <button
           onClick={() => {
+            setEditingInvoice(null);
             setFormError('');
             setCustomerSource(customers.length ? 'customer' : leads.length ? 'lead' : 'manual');
             setCustomerId(customers[0]?.id || '');
@@ -365,7 +366,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                           Client ID: {selectedInvoice.customerCode}
                         </p>
                       )}
-                      <p className="text-xs text-slate-600 mt-1">{selectedInvoice.customerEmail}</p>
+                      <p className="text-xs text-slate-600 mt-1 break-all">{selectedInvoice.customerEmail}</p>
                       {selectedInvoice.customerPhone && (
                         <p className="text-xs text-slate-600">{selectedInvoice.customerPhone}</p>
                       )}
@@ -378,7 +379,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
                       <p className="text-[11px] uppercase tracking-wider font-bold text-[#0144D8]">Issued By</p>
                       <p className="text-sm font-bold text-slate-900">{settings.companyName}</p>
                       <p className="text-slate-600">{settings.companyAddress}</p>
-                      <p className="text-slate-600">{settings.companyEmail} · {settings.companyPhone}</p>
+                      <p className="text-slate-600 break-all">{settings.companyEmail} · {settings.companyPhone}</p>
                       <div className="pt-3 space-y-1 font-mono-tabular">
                         <p className="text-slate-600">
                           Issue Date: <span className="font-semibold text-slate-900">{formatDate(selectedInvoice.issueDate)}</span>
@@ -506,7 +507,7 @@ export const InvoicesView: React.FC<{ initialSelectedId?: string | null }> = ({ 
           <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
               <h3 className="text-base font-bold text-slate-900">{editingInvoice ? 'Edit Corporate Invoice' : 'Generate Corporate Invoice'}</h3>
-              <button onClick={() => setShowCreateModal(false)} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100">
+              <button onClick={() => { setShowCreateModal(false); setEditingInvoice(null); }} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100">
                 <X className="w-4 h-4" />
               </button>
             </div>
