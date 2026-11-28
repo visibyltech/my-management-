@@ -1022,6 +1022,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       );
       await batch.commit();
+      if (firebaseUser) {
+        try {
+          const idToken = await firebaseUser.getIdToken();
+          const response = await fetch('/api/send-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+            body: JSON.stringify({
+              event: 'customer_onboarding_submitted',
+              customerName: payload.fullName || existing.fullName || '',
+              customerEmail: existing.customerEmail,
+              businessName: payload.businessName || existing.businessName || '',
+              servicePurchased: payload.servicePurchased || existing.servicePurchased,
+              formCode: existing.formCode,
+            }),
+          });
+          if (!response.ok) console.warn('Onboarding was submitted, but its email notification failed:', await response.json().catch(() => ({})));
+        } catch (emailError) {
+          console.warn('Onboarding was submitted, but its email notification could not be sent:', emailError);
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `onboardingForms/${formId}`);
     }
@@ -1045,6 +1065,25 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         summary: `Marked onboarding form ${existing.formCode} as Reviewed`,
       });
       await batch.commit();
+      if (firebaseUser && existing.customerEmail) {
+        try {
+          const idToken = await firebaseUser.getIdToken();
+          const response = await fetch('/api/send-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+            body: JSON.stringify({
+              event: 'customer_onboarding_reviewed',
+              customerName: existing.fullName || '',
+              customerEmail: existing.customerEmail,
+              businessName: existing.businessName || '',
+              formCode: existing.formCode,
+            }),
+          });
+          if (!response.ok) console.warn('Onboarding review was saved, but the customer email failed:', await response.json().catch(() => ({})));
+        } catch (emailError) {
+          console.warn('Onboarding review was saved, but the customer email could not be sent:', emailError);
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `onboardingForms/${formId}`);
     }
@@ -1541,16 +1580,26 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       await batch.commit();
 
-      if (updates.employmentStatus === 'active' && existing.employmentStatus !== 'active' && firebaseUser) {
+      if (
+        updates.employmentStatus &&
+        updates.employmentStatus !== existing.employmentStatus &&
+        ['active', 'suspended', 'revoked'].includes(updates.employmentStatus) &&
+        firebaseUser
+      ) {
         try {
           const idToken = await firebaseUser.getIdToken();
-          await fetch('/api/send-notification', {
+          const response = await fetch('/api/send-notification', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
-            body: JSON.stringify({ event: 'staff_approved', staffName: updated.fullName, staffEmail: updated.email }),
+            body: JSON.stringify({
+              event: updates.employmentStatus === 'active' ? 'staff_approved' : 'staff_rejected',
+              staffName: updated.fullName,
+              staffEmail: updated.email,
+            }),
           });
+          if (!response.ok) console.warn('Staff status was saved, but the email notification failed:', await response.json().catch(() => ({})));
         } catch (emailError) {
-          console.warn('Staff approval saved, but email notification could not be sent:', emailError);
+          console.warn('Staff status was saved, but the email notification could not be sent:', emailError);
         }
       }
     } catch (error) {
