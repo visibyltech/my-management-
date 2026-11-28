@@ -364,11 +364,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Send the staff application alert to the fixed Super Admin inbox.
       try {
         const idToken = await firebaseUser.getIdToken();
-        await fetch('/api/send-notification', {
+        const response = await fetch('/api/send-notification', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
           body: JSON.stringify({ event: 'staff_application', staffName: newStaff.fullName, staffEmail: newStaff.email, department: newStaff.department, requestedRole: newStaff.role }),
         });
+        if (!response.ok) console.warn('Staff application was saved, but the admin email notification failed:', await response.json().catch(() => ({})));
       } catch (emailError) {
         console.warn('Staff application saved, but email notification could not be sent:', emailError);
       }
